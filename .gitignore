@@ -13,3 +13,4 @@
 .externalNativeBuild
 /app/cache
 /app/build
+/.idea
