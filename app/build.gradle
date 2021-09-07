@@ -1,0 +1,145 @@
+import java.security.MessageDigest
+
+apply plugin: 'com.android.application'
+apply plugin: 'kotlin-android'
+
+android {
+    compileSdkVersion 28
+    defaultConfig {
+        applicationId "com.baidu.paddle.lite.demo.human_segmentation"
+        minSdkVersion 21
+        targetSdkVersion 28
+        versionCode 1
+        versionName "1.0"
+        testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
+        ndk {
+            abiFilters 'armeabi-v7a' // 指定要ndk需要兼容的架构(这样其他依赖包里其他so会被过滤掉)
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+    buildFeatures {
+        viewBinding = true
+    }
+}
+
+dependencies {
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
+    implementation 'androidx.appcompat:appcompat:1.0.0'
+    implementation 'androidx.constraintlayout:constraintlayout:1.1.3'
+    implementation 'com.google.android.material:material:1.0.0'
+
+    implementation 'androidx.camera:camera-camera2:1.1.0-alpha03'
+    implementation 'androidx.camera:camera-core:1.1.0-alpha03'
+    implementation 'androidx.camera:camera-extensions:1.0.0-alpha23'
+    implementation 'androidx.camera:camera-lifecycle:1.1.0-alpha03'
+    implementation 'androidx.camera:camera-view:1.0.0-alpha23'
+
+//    implementation 'androidx.camera:camera-camera2:1.0.0-alpha04'
+//    implementation 'androidx.camera:camera-core:1.0.0-alpha04'
+//    implementation 'androidx.camera:camera-extensions:1.0.0-alpha04'
+//    implementation 'androidx.camera:camera-lifecycle:1.0.0-alpha04'
+//    implementation 'androidx.camera:camera-view:1.0.0-alpha04'
+
+    testImplementation 'junit:junit:4.12'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.1'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.1.0'
+    implementation files('libs/PaddlePredictor.jar')
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.5.1-native-mt'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.5.1-native-mt'
+}
+
+def paddleLiteLibs = 'https://paddlelite-demo.bj.bcebos.com/libs/android/paddle_lite_libs_v2_8_0.tar.gz'
+task downloadAndExtractPaddleLiteLibs(type: DefaultTask) {
+    doFirst {
+        println "Downloading and extracting Paddle Lite libs"
+    }
+    doLast {
+        // Prepare cache folder for libs
+        if (!file("cache").exists()) {
+            mkdir "cache"
+        }
+        // Generate cache name for libs
+        MessageDigest messageDigest = MessageDigest.getInstance('MD5')
+        messageDigest.update(paddleLiteLibs.bytes)
+        String cacheName = new BigInteger(1, messageDigest.digest()).toString(32)
+        // Download libs
+        if (!file("cache/${cacheName}.tar.gz").exists()) {
+            ant.get(src: paddleLiteLibs, dest: file("cache/${cacheName}.tar.gz"))
+        }
+        // Unpack libs
+        copy {
+            from tarTree("cache/${cacheName}.tar.gz")
+            into "cache/${cacheName}"
+        }
+        // Copy PaddlePredictor.jar
+        if (!file("libs/PaddlePredictor.jar").exists()) {
+            copy {
+                from "cache/${cacheName}/java/PaddlePredictor.jar"
+                into "libs"
+            }
+        }
+        // Copy libpaddle_lite_jni.so for armeabi-v7a and arm64-v8a
+        if (!file("src/main/jniLibs/armeabi-v7a/libpaddle_lite_jni.so").exists()) {
+            copy {
+                from "cache/${cacheName}/java/libs/armeabi-v7a/"
+                into "src/main/jniLibs/armeabi-v7a"
+            }
+        }
+        if (!file("src/main/jniLibs/arm64-v8a/libpaddle_lite_jni.so").exists()) {
+            copy {
+                from "cache/${cacheName}/java/libs/arm64-v8a/"
+                into "src/main/jniLibs/arm64-v8a"
+            }
+        }
+    }
+}
+preBuild.dependsOn downloadAndExtractPaddleLiteLibs
+
+def paddleLiteModels = [
+        [
+                'src' : 'https://bj.bcebos.com/paddleseg/deploy/lite/android/hrnet_w18_small.tar.gz',
+                'dest': 'src/main/assets/image_segmentation/models/for_cpu'
+        ],
+]
+task downloadAndExtractPaddleLiteModels(type: DefaultTask) {
+    doFirst {
+        println "Downloading and extracting Paddle Lite models"
+    }
+    doLast {
+        // Prepare cache folder for models
+        if (!file("cache").exists()) {
+            mkdir "cache"
+        }
+        paddleLiteModels.eachWithIndex { model, index ->
+            MessageDigest messageDigest = MessageDigest.getInstance('MD5')
+            messageDigest.update(model.src.bytes)
+            String cacheName = new BigInteger(1, messageDigest.digest()).toString(32)
+            // Download model file
+            if (!file("cache/${cacheName}.tar.gz").exists()) {
+                ant.get(src: model.src, dest: file("cache/${cacheName}.tar.gz"))
+            }
+            // Unpack model file
+            copy {
+                from tarTree("cache/${cacheName}.tar.gz")
+                into "cache/${cacheName}"
+            }
+            // Copy model file
+            if (!file("${model.dest}/hrnet_18_small.nb").exists()) {
+                copy {
+                    from "cache/${cacheName}"
+                    into "${model.dest}"
+                }
+            }
+        }
+    }
+}
+preBuild.dependsOn downloadAndExtractPaddleLiteModels
+repositories {
+    mavenCentral()
+}
