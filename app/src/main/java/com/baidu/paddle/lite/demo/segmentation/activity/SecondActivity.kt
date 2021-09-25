@@ -97,7 +97,7 @@ class SecondActivity : AppCompatActivity(), CameraXConfig.Provider {
                 val rotationDegrees = image.imageInfo.rotationDegrees
                 // insert your code here.
                 Log.i("NFL", "================ ${Thread.currentThread().name}")
-                val bitmap = YUVTools.nv21ToBitmap(
+                val bitmap = YUVTools.nv12ToBitmap(
                     YUVTools.getBytesFromImage(image).bytes,
                     image.width,
                     image.height
@@ -125,8 +125,9 @@ class SecondActivity : AppCompatActivity(), CameraXConfig.Provider {
 
         })
 
+        cameraProvider.unbindAll()
         var camera = cameraProvider.bindToLifecycle(
-            this as LifecycleOwner,
+            this,
             cameraSelector,
             imageAnalysis,
             preview

@@ -259,7 +259,7 @@ public class YUVTools {
 //    }
 
     /**
-     * Android
+     * 这个方法在 Android 中可以还原摄像头色彩
      * @param data
      * @param w
      * @param h
