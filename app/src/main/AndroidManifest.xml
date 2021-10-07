@@ -15,15 +15,17 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
         <activity
-            android:name=".activity.SecondActivity"
-            android:exported="true">
+            android:name=".activity.GetScreenActivity"
+            android:exported="true" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name=".activity.MainActivity" android:hardwareAccelerated="true">
+        <activity
+            android:name=".activity.SecondActivity"
+            android:exported="true">
 <!--            <intent-filter>-->
 <!--                <action android:name="android.intent.action.MAIN" />-->
 
@@ -31,8 +33,19 @@
 <!--            </intent-filter>-->
         </activity>
         <activity
+            android:name=".activity.MainActivity"
+            android:hardwareAccelerated="true">
+
+            <!-- <intent-filter> -->
+            <!-- <action android:name="android.intent.action.MAIN" /> -->
+
+
+            <!-- <category android:name="android.intent.category.LAUNCHER" /> -->
+            <!-- </intent-filter> -->
+        </activity>
+        <activity
             android:name=".activity.SettingsActivity"
-            android:label="Settings"></activity>
+            android:label="Settings" />
     </application>
 
 </manifest>
