@@ -10,10 +10,16 @@ import java.io.FileInputStream;
  */
 public class AVCFileReader extends Thread {
     //文件路径
-    private String path = "sdcard/mc_video.h264";
+    private String path ;
     //文件读取完成标识
     private boolean isFinish = false;
     private AVCDecoder mDecoder;
+
+    private AVCFileReader(){}
+
+    public AVCFileReader(String videoPath){
+        this.path = videoPath ;
+    }
 
     public void setDecoder(AVCDecoder decoder) {
         mDecoder = decoder;
@@ -30,7 +36,7 @@ public class AVCFileReader extends Thread {
                 // 保存帧文件的时候，每帧数据的前4个字节记录了当前帧的长度，方便读取
                 byte[] frameLength = new byte[4];
                 //当前帧长度
-                int frameLen = 0;
+                int frameLen ;
                 //每次从文件读取的数据
                 byte[] readData;
                 //循环读取数据
@@ -44,6 +50,7 @@ public class AVCFileReader extends Thread {
                         // 读取帧内容
                         fis.read(readData);
                         count++;
+                        Log.i("NFL" , "读取的帧大小：" + frameLen);
                         onFrame(readData, 0, readData.length);
                         try {
                             // 由于每帧数据读取完毕立即丢给解码器显示，没有时间戳（PTS、DTS）控制解码显示

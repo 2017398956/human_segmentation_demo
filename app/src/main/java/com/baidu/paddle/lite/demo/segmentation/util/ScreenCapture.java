@@ -7,6 +7,7 @@ import android.media.MediaCodec;
 import android.media.MediaCodecInfo;
 import android.media.MediaFormat;
 import android.media.projection.MediaProjection;
+import android.os.Build;
 import android.util.Log;
 import android.view.Surface;
 
@@ -21,6 +22,8 @@ public class ScreenCapture {
 
     private int width, height;
     private MediaCodec mEncoder;
+    private MediaFormat mediaFormat;
+    private String mediaFormatType = MediaFormat.MIMETYPE_VIDEO_AVC;
     private MediaProjection mediaProjection;
     private OnCaptureVideoCallback onCaptureVideoCallback;
     private VirtualDisplay mVirtualDisplay;
@@ -28,9 +31,11 @@ public class ScreenCapture {
     private ScreenCapture() {
     }
 
-    ;
     private boolean isCapturing = false;
     private Thread mCaptureThread;
+    // 用于展示录制 video 的 surface
+    private Surface videoSurface ;
+    // 用于提供给 mediaProjection 以便于获取视频数据流
     private Surface surface;
 
     public ScreenCapture(int width, int height, MediaProjection mediaProjection) {
@@ -54,8 +59,8 @@ public class ScreenCapture {
         encodeAsync();
     }
 
-    private void initEncoder() {
-        MediaFormat mediaFormat =
+    private void initMediaFormat(){
+        mediaFormat =
                 MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, width, height);
         // 设置视频输入颜色格式，这里选择使用Surface作为输入，可以忽略颜色格式的问题，并且不需要直接操作输入缓冲区。
         mediaFormat.setInteger(
@@ -71,18 +76,17 @@ public class ScreenCapture {
         mediaFormat.setInteger(MediaFormat.KEY_FRAME_RATE, 60);
         // I帧间隔
         mediaFormat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 5);
-        try {
-            mEncoder = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_VIDEO_AVC);
-            mEncoder.configure(mediaFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
-//            if (surface == null){
-//                surface = mEncoder.createInputSurface();
-//            }else {
-//                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-//                    mEncoder.setOutputSurface(surface);
-//                }
-//            }
-            surface = mEncoder.createInputSurface();
+    }
 
+    private void initEncoder() {
+        initMediaFormat();
+        try {
+            mEncoder = MediaCodec.createEncoderByType(mediaFormatType);
+            mEncoder.configure(mediaFormat, videoSurface, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                mEncoder.setOutputSurface(videoSurface);
+            }
+            surface = mEncoder.createInputSurface();
             mVirtualDisplay = mediaProjection.createVirtualDisplay(
                     "-display", width, height, 1,
                     DisplayManager.VIRTUAL_DISPLAY_FLAG_PUBLIC, surface, null, null
@@ -121,7 +125,7 @@ public class ScreenCapture {
                         return;
                     }
 
-                    boolean useImage = true;
+                    boolean useImage = false;
                     if (info.flags == MediaCodec.BUFFER_FLAG_KEY_FRAME || true) {
                         if (useImage) {
                             Image image = codec.getOutputImage(index);
@@ -197,7 +201,6 @@ public class ScreenCapture {
         mCaptureThread.start();
     }
 
-
     public interface OnCaptureVideoCallback {
         void onCaptureVideo(byte[] bytes, int width, int height);
     }
@@ -224,11 +227,19 @@ public class ScreenCapture {
         }
     }
 
-    public void setSurface(Surface surface) {
-        this.surface = surface;
+    public Surface getVideoSurface() {
+        return videoSurface;
     }
 
-    public Surface getSurface() {
-        return surface;
+    public void setVideoSurface(Surface videoSurface) {
+        this.videoSurface = videoSurface;
+    }
+
+    public MediaFormat getMediaFormat() {
+        return mediaFormat;
+    }
+
+    public String getMediaFormatType() {
+        return mediaFormatType;
     }
 }
