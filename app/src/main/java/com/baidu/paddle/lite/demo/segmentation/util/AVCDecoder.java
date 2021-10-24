@@ -86,7 +86,6 @@ public class AVCDecoder {
                     ByteBuffer inputBuffer = mCodec.getInputBuffer(index);
                     inputBuffer.clear();
                     inputBuffer.put(frame.buf, frame.offset, frame.length);
-                    // Log.i(TAG, "queueInputBuffer " + frame.offset + "/" + frame.length);
                     mCodec.queueInputBuffer(index, 0, frame.length - frame.offset, 0, 0);
                 }
             }
@@ -98,13 +97,12 @@ public class AVCDecoder {
         if (CodecUtils.getFrameType(buf) == CodecUtils.NAL_SPS) {
             // 数据格式：sps+pps，所以 pps 之前的都是 sps 的数据
             // sps 和 pps 的数据都要包括 0x00 0x00 0x00 0x01
-            int ppsPosition = getPPSPosition(buf);
+            int ppsPosition = CodecUtils.getPPSPosition(buf);
             if (ppsPosition > 0) {
                 byte[] sps = new byte[ppsPosition];
                 System.arraycopy(buf, 0, sps, 0, sps.length);
                 byte[] pps = new byte[buf.length - sps.length];
                 System.arraycopy(buf, ppsPosition, pps, 0, pps.length);
-                Log.i("NFL" , "sps:" + Arrays.toString(sps) + " pps:" + Arrays.toString(pps)) ;
                 mediaFormat.setByteBuffer("csd-0", ByteBuffer.wrap(sps));
                 mediaFormat.setByteBuffer("csd-1", ByteBuffer.wrap(pps));
                 mCodec.configure(mediaFormat, mSurfaceView.getHolder().getSurface(),
@@ -124,10 +122,6 @@ public class AVCDecoder {
                 decodeDeprecated(buf, offset, length);
                 break;
         }
-    }
-
-    private int getPPSPosition(byte[] buf) {
-        return 18;
     }
 
     private void decodeAsync(byte[] buf, int offset, int length) {

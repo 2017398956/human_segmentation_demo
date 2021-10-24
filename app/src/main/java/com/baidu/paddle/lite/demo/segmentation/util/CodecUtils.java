@@ -44,8 +44,34 @@ public class CodecUtils {
         return result;
     }
 
+    /**
+     * 7(sps)或者8(pps), 及 data[4] & 0x1f == 7 || data[4] & 0x1f == 8
+      */
     public static int getFrameType(byte[] buf) {
         return buf[4] & 0x1f;
+    }
+
+    /**
+     * 第一帧的数据格式：sps+pps，所以 pps 之前的都是 sps 的数据,
+     * sps 和 pps 的数据都要包括 0x00 0x00 0x00 0x01
+     * @param buf 帧数据
+     * @return -1 如果没找到
+     */
+    public static int getPPSPosition(byte[] buf) {
+        int ppsPosition ;
+        for(int i = 5 ; i < buf.length ; i++){
+            if (buf[i] == 0){
+                ppsPosition = i ;
+                if (i + 4 < buf.length &&
+                        buf[i + 1] == 0 &&
+                        buf[i + 2] == 0 &&
+                        buf[i + 3] == 1 &&
+                        buf[i + 4] == 0x68){
+                    return ppsPosition ;
+                }
+            }
+        }
+        return -1;
     }
 
     public static void getSPSAndPPS(byte[] frame){
