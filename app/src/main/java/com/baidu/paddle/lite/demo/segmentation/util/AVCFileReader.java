@@ -14,15 +14,16 @@ public class AVCFileReader extends Thread {
     //文件读取完成标识
     private boolean isFinish = false;
     private AVCDecoder mDecoder;
+    private PlayListener playListener ;
 
     private AVCFileReader(){}
 
-    public AVCFileReader(String videoPath){
+    public AVCFileReader(String videoPath , AVCDecoder decoder){
         this.path = videoPath ;
-    }
-
-    public void setDecoder(AVCDecoder decoder) {
-        mDecoder = decoder;
+        this.mDecoder = decoder ;
+        if (null != playListener){
+            playListener.onReady();
+        }
     }
 
     @Override
@@ -41,6 +42,9 @@ public class AVCFileReader extends Thread {
                 byte[] readData;
                 //循环读取数据
                 int count = 0;
+                if (null != playListener){
+                    playListener.onPlaying();
+                }
                 while (!isFinish) {
                     if (fis.available() > 0) {
                         // 读取帧长度
@@ -64,12 +68,21 @@ public class AVCFileReader extends Thread {
                         isFinish = true;
                     }
                 }
-
-                //Log.i(TAG, "frameLen finish " + count);
+                if (null != playListener){
+                    playListener.onFinished();
+                }
+                fis.close();
+                fis = null;
+                mDecoder.stop();
             } catch (Exception e) {
                 e.printStackTrace();
             }
         }
+    }
+
+    public void stopPlay(){
+        isFinish = true;
+        mDecoder.stop();
     }
 
     private String TAG = getClass().getSimpleName();
@@ -81,8 +94,17 @@ public class AVCFileReader extends Thread {
      * @param length
      */
     private void onFrame(byte[] frame, int offset, int length) {
-        //Log.i(TAG, "onFrame " + offset + "/" + length);
         mDecoder.onFrame(frame, offset, length);
+    }
+
+    public interface PlayListener{
+        void onReady();
+        void onPlaying();
+        void onFinished();
+    }
+
+    public void setPlayListener(PlayListener playListener) {
+        this.playListener = playListener;
     }
 }
 

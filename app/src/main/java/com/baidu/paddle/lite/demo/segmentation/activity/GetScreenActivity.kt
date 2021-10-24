@@ -7,6 +7,7 @@ import android.media.projection.MediaProjectionManager
 import android.os.Bundle
 import android.util.Base64
 import android.util.Log
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import cc.rome753.yuvtools.YUVTools
 import com.baidu.paddle.lite.demo.segmentation.databinding.ActivityGetScreenBinding
@@ -14,6 +15,9 @@ import com.baidu.paddle.lite.demo.segmentation.util.AVCDecoder
 import com.baidu.paddle.lite.demo.segmentation.util.AVCFileReader
 import com.baidu.paddle.lite.demo.segmentation.util.CodecUtils
 import com.baidu.paddle.lite.demo.segmentation.util.ScreenCapture
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import java.io.*
 import java.util.*
 
@@ -26,6 +30,7 @@ class GetScreenActivity : AppCompatActivity() {
     private var mScreenCapture: ScreenCapture? = null
     private var height = 0
     private var width = 0
+    private var avcFileReader:AVCFileReader? = null
     private var binding: ActivityGetScreenBinding? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -51,15 +56,44 @@ class GetScreenActivity : AppCompatActivity() {
             }
         }
         binding!!.btnPlay.setOnClickListener {
-            val useMediaPlayer = false
-            if (useMediaPlayer){
-                play()
+            if (binding!!.btnPlay.text == "开始播放"){
+                if ("停止录制" == binding!!.btnRecordOrStop.text){
+                    Toast.makeText(this@GetScreenActivity , "录制中，请结束录制后播放" , Toast.LENGTH_SHORT).show()
+                    return@setOnClickListener
+                }
+                binding!!.btnPlay.text = "停止播放"
+                if (null == mScreenCapture){
+                    Toast.makeText(this@GetScreenActivity , "请先录制" , Toast.LENGTH_SHORT).show()
+                    return@setOnClickListener
+                }
+                val useMediaPlayer = false
+                if (useMediaPlayer){
+                    play()
+                }else{
+                    val avcDecoder = AVCDecoder(binding!!.sv , mScreenCapture?.mediaFormatType,
+                        width ,height , mScreenCapture?.mediaFormat)
+                    avcDecoder.imageView = binding!!.ivDisplay
+                    avcFileReader = AVCFileReader(videoPath, avcDecoder)
+                    avcFileReader?.setPlayListener(object : AVCFileReader.PlayListener{
+                        override fun onReady() {
+
+                        }
+
+                        override fun onPlaying() {
+                        }
+
+                        override fun onFinished() {
+                            GlobalScope.launch(Dispatchers.Main) {
+                                binding!!.btnPlay.text = "开始播放"
+                            }
+                        }
+
+                    })
+                    avcFileReader?.start()
+                }
             }else{
-                val avcDecoder = AVCDecoder(binding!!.sv , mScreenCapture?.mediaFormatType,
-                    width ,height , mScreenCapture?.mediaFormat)
-                val avcFileReader = AVCFileReader(videoPath)
-                avcFileReader.setDecoder(avcDecoder)
-                avcFileReader.start()
+                binding!!.btnPlay.text = "开始播放"
+                avcFileReader?.stopPlay()
             }
         }
     }

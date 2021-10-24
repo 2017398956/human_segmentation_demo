@@ -4,6 +4,7 @@ import android.media.MediaCodec;
 import android.media.MediaFormat;
 import android.util.Log;
 import android.view.SurfaceView;
+import android.widget.ImageView;
 
 import com.baidu.paddle.lite.demo.segmentation.beans.VideoFrame;
 
@@ -11,6 +12,8 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.LinkedList;
+
+import cc.rome753.yuvtools.YUVTools;
 
 public class AVCDecoder {
     private String TAG = "AVCDecoder";
@@ -21,6 +24,8 @@ public class AVCDecoder {
     private int height ;
     private SurfaceView mSurfaceView;
     private LinkedList<VideoFrame> mFrameList = new LinkedList<>();
+
+    public ImageView imageView ;
 
     public final static int DECODE_ASYNC = 0;
     public final static int DECODE_SYNC = 1;
@@ -39,21 +44,20 @@ public class AVCDecoder {
         initDecoder();
     }
 
-    public void initDecoder() {
+    private void initDecoder() {
         try {
             mCodec = MediaCodec.createDecoderByType(mediaFormatType);
             if (mDecodeType == DECODE_ASYNC) {
                 mCodec.setCallback(new MediaCodec.Callback() {
                     @Override
                     public void onInputBufferAvailable(MediaCodec codec, int index) {
-                        //Log.i(TAG, "onInputBufferAvailable " + Thread.currentThread().getName());
+                        Log.i("NFL", "onInputBufferAvailable:AVCDecoder"+index);
                         mInputIndexList.add(index);
                     }
 
                     @Override
                     public void onOutputBufferAvailable(MediaCodec codec, int index, MediaCodec.BufferInfo info) {
-                        //Log.i(TAG, "onOutputBufferAvailable");
-                        mCodec.releaseOutputBuffer(index, true);
+                        codec.releaseOutputBuffer(index, true);
                     }
 
                     @Override
@@ -109,6 +113,13 @@ public class AVCDecoder {
                         null, 0);
                 mCodec.start();
             }
+        }else {
+            // 视频帧
+            if (!"1".equals(imageView.getTag())){
+                // TODO h264 需要先转换成 YUV
+                // imageView.setImageBitmap(YUVTools.nv12ToBitmap(buf , width , height));
+                imageView.setTag("1");
+            }
         }
 
         switch (mDecodeType) {
@@ -124,6 +135,11 @@ public class AVCDecoder {
         }
     }
 
+    public void stop(){
+        mCodec.stop();
+        mCodec.release();
+    }
+
     private void decodeAsync(byte[] buf, int offset, int length) {
         VideoFrame frame = new VideoFrame();
         frame.buf = buf;
@@ -133,7 +149,6 @@ public class AVCDecoder {
     }
 
     private void decodeSync(byte[] buf, int offset, int length) {
-
         int inputBufferIndex = mCodec.dequeueInputBuffer(100);
         if (inputBufferIndex >= 0) {
             ByteBuffer inputBuffer = mCodec.getInputBuffer(inputBufferIndex);
@@ -153,7 +168,6 @@ public class AVCDecoder {
     }
 
     private void decodeDeprecated(byte[] buf, int offset, int length) {
-
         ByteBuffer[] inputBuffers = mCodec.getInputBuffers();
         int inputBufferIndex = mCodec.dequeueInputBuffer(100);
         if (inputBufferIndex >= 0) {
@@ -164,7 +178,6 @@ public class AVCDecoder {
         } else {
             return;
         }
-
         MediaCodec.BufferInfo bufferInfo = new MediaCodec.BufferInfo();
         int outputBufferIndex = mCodec.dequeueOutputBuffer(bufferInfo, 100);
         while (outputBufferIndex >= 0) {

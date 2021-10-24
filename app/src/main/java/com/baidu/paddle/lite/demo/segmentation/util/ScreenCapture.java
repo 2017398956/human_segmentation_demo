@@ -70,6 +70,10 @@ public class ScreenCapture {
         // 这里指定 YUV
 //        mediaFormat.setInteger(MediaFormat.KEY_COLOR_FORMAT,
 //                MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420SemiPlanar);
+//        if (isColorFormatSupported(MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Planar,
+//                mEncoder.getCodecInfo().getCapabilitiesForType(mediaFormatType))) {
+//
+//        }
         // 码率
         mediaFormat.setInteger(MediaFormat.KEY_BIT_RATE, width * height);
         // 帧率
@@ -241,5 +245,15 @@ public class ScreenCapture {
 
     public String getMediaFormatType() {
         return mediaFormatType;
+    }
+
+    private boolean isColorFormatSupported(int colorFormat, MediaCodecInfo.CodecCapabilities caps) {
+        for (int c : caps.colorFormats) {
+            if (c == colorFormat) {
+                return true;
+            }
+        }
+        Log.w("NFL", "不支持 CodecCapabilities");
+        return false;
     }
 }
