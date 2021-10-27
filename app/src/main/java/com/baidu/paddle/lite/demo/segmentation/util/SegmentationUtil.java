@@ -3,19 +3,17 @@ package com.baidu.paddle.lite.demo.segmentation.util;
 import android.content.Context;
 import android.graphics.Bitmap;
 
-import com.baidu.paddle.lite.demo.segmentation.Predictor;
-import com.baidu.paddle.lite.demo.segmentation.config.Config;
-import com.baidu.paddle.lite.demo.segmentation.preprocess.Preprocess;
-
-import org.jetbrains.annotations.Nullable;
+import com.baidu.paddle.lite.demo.segmentation.HumanSegPredictor;
+import com.baidu.paddle.lite.demo.segmentation.config.HumanSegConfig;
+import com.baidu.paddle.lite.demo.segmentation.preprocess.HumanSegPreprocess;
 
 public class SegmentationUtil {
 
     public static final SegmentationUtil instance = new SegmentationUtil();
     private Context context;
-    private Config config;
-    private Predictor predictor = new Predictor();
-    private Preprocess preprocess = new Preprocess();
+    private HumanSegConfig humanSegConfig;
+    private HumanSegPredictor humanSegPredictor = new HumanSegPredictor();
+    private HumanSegPreprocess humanSegPreprocess = new HumanSegPreprocess();
 
     private SegmentationUtil() {
     }
@@ -30,39 +28,39 @@ public class SegmentationUtil {
         } else {
             this.context = context;
         }
-        this.config = Config.defaultConfig(this.context);
-        predictor.init(this.context, config);
-        predictor.setInputImage(ImageUtil.getBitmapByPath(context, config.imagePath));
-        preprocess.init(config);
-        preprocess.to_array(predictor.scaledImage);
-        preprocess.normalize(preprocess.inputData);
+        this.humanSegConfig = HumanSegConfig.defaultConfig(this.context);
+        humanSegPredictor.init(this.context, humanSegConfig);
+        humanSegPredictor.setInputImage(ImageUtil.getBitmapByPath(context, humanSegConfig.imagePath));
+        humanSegPreprocess.init(humanSegConfig);
+        humanSegPreprocess.to_array(humanSegPredictor.scaledImage);
+        humanSegPreprocess.normalize(humanSegPreprocess.inputData);
     }
 
     public boolean loadModel() {
-        return predictor.init(context, config);
+        return humanSegPredictor.init(context, humanSegConfig);
     }
 
     public boolean runModel(Visualize visualize) {
-        return predictor.isLoaded() && predictor.runModel(preprocess, visualize);
+        return humanSegPredictor.isLoaded() && humanSegPredictor.runModel(humanSegPreprocess, visualize);
     }
 
     public Bitmap getSegmentationBitmap() {
-        return predictor.outputImage();
+        return humanSegPredictor.outputImage();
     }
 
     public Bitmap getScaledImage() {
-        return predictor.scaledImage;
+        return humanSegPredictor.scaledImage;
     }
 
     public Bitmap getBackgroundImage() {
-        return ImageUtil.getBitmapByPath(context, config.backgroundPath);
+        return ImageUtil.getBitmapByPath(context, humanSegConfig.backgroundPath);
     }
 
     public void refreshInputBitmap(Bitmap image) {
-        predictor.init(this.context, config);
-        predictor.setInputImage(image);
-        preprocess.init(config);
-        preprocess.to_array(predictor.scaledImage);
-        preprocess.normalize(preprocess.inputData);
+        humanSegPredictor.init(this.context, humanSegConfig);
+        humanSegPredictor.setInputImage(image);
+        humanSegPreprocess.init(humanSegConfig);
+        humanSegPreprocess.to_array(humanSegPredictor.scaledImage);
+        humanSegPreprocess.normalize(humanSegPreprocess.inputData);
     }
 }

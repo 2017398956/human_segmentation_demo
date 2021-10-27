@@ -30,11 +30,11 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
-import com.baidu.paddle.lite.demo.segmentation.Predictor;
+import com.baidu.paddle.lite.demo.segmentation.HumanSegPredictor;
 import com.baidu.paddle.lite.demo.segmentation.R;
 import com.baidu.paddle.lite.demo.segmentation.Utils;
-import com.baidu.paddle.lite.demo.segmentation.config.Config;
-import com.baidu.paddle.lite.demo.segmentation.preprocess.Preprocess;
+import com.baidu.paddle.lite.demo.segmentation.config.HumanSegConfig;
+import com.baidu.paddle.lite.demo.segmentation.preprocess.HumanSegPreprocess;
 import com.baidu.paddle.lite.demo.segmentation.util.ImageUtil;
 import com.baidu.paddle.lite.demo.segmentation.visual.ReplaceBackgroundVisualize;
 
@@ -67,11 +67,9 @@ public class MainActivity extends AppCompatActivity {
     protected TextView tvInferenceTime;
 
     // model config
-    Config config = new Config();
-
-    protected Predictor predictor = new Predictor();
-
-    Preprocess preprocess = new Preprocess();
+    HumanSegConfig humanSegConfig = new HumanSegConfig();
+    protected HumanSegPredictor humanSegPredictor = new HumanSegPredictor();
+    HumanSegPreprocess humanSegPreprocess = new HumanSegPreprocess();
 
     ReplaceBackgroundVisualize replaceBackgroundVisualize = new ReplaceBackgroundVisualize();
 
@@ -79,13 +77,14 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        initView();
         receiver = new Handler() {
             @Override
             public void handleMessage(Message msg) {
                 switch (msg.what) {
                     case RESPONSE_LOAD_MODEL_SUCCESSED:
                         pbLoadModel.dismiss();
-                        onLoadModelSuccessed();
+                        onLoadModelSucceed();
                         break;
                     case RESPONSE_LOAD_MODEL_FAILED:
                         pbLoadModel.dismiss();
@@ -94,7 +93,7 @@ public class MainActivity extends AppCompatActivity {
                         break;
                     case RESPONSE_RUN_MODEL_SUCCESSED:
                         pbRunModel.dismiss();
-                        onRunModelSuccessed();
+                        onRunModelSucceed();
                         break;
                     case RESPONSE_RUN_MODEL_FAILED:
                         pbRunModel.dismiss();
@@ -106,7 +105,6 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         };
-
         worker = new HandlerThread("Predictor Worker");
         worker.start();
         sender = new Handler(worker.getLooper()) {
@@ -114,11 +112,8 @@ public class MainActivity extends AppCompatActivity {
                 switch (msg.what) {
                     case REQUEST_LOAD_MODEL:
                         // load model and reload test image
-                        if (onLoadModel()) {
-                            receiver.sendEmptyMessage(RESPONSE_LOAD_MODEL_SUCCESSED);
-                        } else {
-                            receiver.sendEmptyMessage(RESPONSE_LOAD_MODEL_FAILED);
-                        }
+                        boolean loadResult = humanSegPredictor.init(getApplicationContext(), humanSegConfig);
+                        receiver.sendEmptyMessage(loadResult? RESPONSE_LOAD_MODEL_SUCCESSED : RESPONSE_LOAD_MODEL_FAILED);
                         break;
                     case REQUEST_RUN_MODEL:
                         // run model if model is loaded
@@ -133,7 +128,9 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         };
+    }
 
+    private void initView(){
         tvInputSetting = findViewById(R.id.tv_input_setting);
         ivInputImage = findViewById(R.id.iv_input_image);
         tvInferenceTime = findViewById(R.id.tv_inference_time);
@@ -142,20 +139,10 @@ public class MainActivity extends AppCompatActivity {
         tvOutputResult.setMovementMethod(ScrollingMovementMethod.getInstance());
     }
 
-
-    public boolean onLoadModel() {
-//        SegmentationUtil.getInstance().loadModel(MainActivity.this , predictor , config) ;
-        return predictor.init(MainActivity.this, config);
-    }
-
-
-    public boolean onRunModel() {
-        replaceBackgroundVisualize.setBackgroundImage(ImageUtil.getBitmapByPath(this, config.backgroundPath));
-        replaceBackgroundVisualize.setScaledImage(predictor.scaledImage);
-        preprocess.init(config);
-        preprocess.to_array(predictor.scaledImage);
-        preprocess.normalize(preprocess.inputData);
-        return predictor.isLoaded() && predictor.runModel(preprocess, replaceBackgroundVisualize);
+    private boolean onRunModel() {
+        replaceBackgroundVisualize.setBackgroundImage(ImageUtil.getBitmapByPath(this, humanSegConfig.backgroundPath));
+        replaceBackgroundVisualize.setScaledImage(humanSegPredictor.scaledImage);
+        return humanSegPredictor.isLoaded() && humanSegPredictor.runModel(humanSegPreprocess, replaceBackgroundVisualize);
     }
 
     public void onLoadModelFailed() {
@@ -165,7 +152,7 @@ public class MainActivity extends AppCompatActivity {
     public void onRunModelFailed() {
     }
 
-    public void loadModel() {
+    private void loadModel() {
         pbLoadModel = ProgressDialog.show(this, "", "Loading model...", false, false);
         sender.sendEmptyMessage(REQUEST_LOAD_MODEL);
     }
@@ -175,45 +162,45 @@ public class MainActivity extends AppCompatActivity {
         sender.sendEmptyMessage(REQUEST_RUN_MODEL);
     }
 
-    public void onLoadModelSuccessed() {
+    public void onLoadModelSucceed() {
         // load test image from file_paths and run model
-        if (config.imagePath.isEmpty()) {
+        if (humanSegConfig.imagePath.isEmpty()) {
             return;
         }
 
-        Bitmap image = ImageUtil.getBitmapByPath(this, config.imagePath);
-        if (image != null && predictor.isLoaded()) {
-            predictor.setInputImage(image);
-            preprocess.init(config);
-            preprocess.to_array(predictor.inputImage()) ;
-            preprocess.normalize(preprocess.inputData);
+        Bitmap image = ImageUtil.getBitmapByPath(this, humanSegConfig.imagePath);
+        if (image != null && humanSegPredictor.isLoaded()) {
+            humanSegPredictor.setInputImage(image);
+            humanSegPreprocess.init(humanSegConfig);
+            // to_array 后会把数据放入到 humanSegPreprocess.inputData 中，这里为了效率要使用 scaledImage
+            humanSegPreprocess.to_array(humanSegPredictor.scaledImage) ;
+            humanSegPreprocess.normalize(humanSegPreprocess.inputData);
             runModel();
         }
     }
 
-    public void onRunModelSuccessed() {
+    private void onRunModelSucceed() {
         // obtain results and update UI
-        tvInferenceTime.setText("Inference time: " + predictor.inferenceTime() + " ms");
-        Bitmap outputImage = predictor.outputImage();
+        tvInferenceTime.setText("Inference time: " + humanSegPredictor.inferenceTime() + " ms");
+        Bitmap outputImage = humanSegPredictor.outputImage();
         if (outputImage != null) {
             ivInputImage.setImageBitmap(outputImage);
         }
-        tvOutputResult.setText(predictor.outputResult());
+        tvOutputResult.setText(humanSegPredictor.outputResult());
         tvOutputResult.scrollTo(0, 0);
     }
 
-
     public void onImageChanged(Bitmap image) {
         // rerun model if users pick test image from gallery or camera
-        if (image != null && predictor.isLoaded()) {
-            predictor.setInputImage(image);
+        if (image != null && humanSegPredictor.isLoaded()) {
+            humanSegPredictor.setInputImage(image);
             runModel();
         }
     }
 
     public void onImageChanged(String path) {
         Bitmap image = BitmapFactory.decodeFile(path);
-        predictor.setInputImage(image);
+        humanSegPredictor.setInputImage(image);
         runModel();
     }
 
@@ -321,7 +308,7 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     public boolean onPrepareOptionsMenu(Menu menu) {
-        boolean isLoaded = predictor.isLoaded();
+        boolean isLoaded = humanSegPredictor.isLoaded();
         menu.findItem(R.id.open_gallery).setEnabled(isLoaded);
         menu.findItem(R.id.take_photo).setEnabled(isLoaded);
         return super.onPrepareOptionsMenu(menu);
@@ -329,9 +316,7 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onResume() {
-        Log.i(TAG, "begin onResume");
         super.onResume();
-
         SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
         boolean settingsChanged = false;
         String model_path = sharedPreferences.getString(getString(R.string.MODEL_PATH_KEY),
@@ -341,40 +326,40 @@ public class MainActivity extends AppCompatActivity {
         String image_path = sharedPreferences.getString(getString(R.string.IMAGE_PATH_KEY),
                 getString(R.string.IMAGE_PATH_DEFAULT));
         String background_path = sharedPreferences.getString(getString(R.string.BACKGROUND_PATH_KEY), getString(R.string.BACKGROUND_PATH_DEFAULT));
-        settingsChanged |= !model_path.equalsIgnoreCase(config.modelPath);
-        settingsChanged |= !label_path.equalsIgnoreCase(config.labelPath);
-        settingsChanged |= !image_path.equalsIgnoreCase(config.imagePath);
-        settingsChanged |= !background_path.equalsIgnoreCase(config.backgroundPath);
+        settingsChanged |= !model_path.equalsIgnoreCase(humanSegConfig.modelPath);
+        settingsChanged |= !label_path.equalsIgnoreCase(humanSegConfig.labelPath);
+        settingsChanged |= !image_path.equalsIgnoreCase(humanSegConfig.imagePath);
+        settingsChanged |= !background_path.equalsIgnoreCase(humanSegConfig.backgroundPath);
         int cpu_thread_num = Integer.parseInt(sharedPreferences.getString(getString(R.string.CPU_THREAD_NUM_KEY),
                 getString(R.string.CPU_THREAD_NUM_DEFAULT)));
-        settingsChanged |= cpu_thread_num != config.cpuThreadNum;
+        settingsChanged |= cpu_thread_num != humanSegConfig.cpuThreadNum;
         String cpu_power_mode =
                 sharedPreferences.getString(getString(R.string.CPU_POWER_MODE_KEY),
                         getString(R.string.CPU_POWER_MODE_DEFAULT));
-        settingsChanged |= !cpu_power_mode.equalsIgnoreCase(config.cpuPowerMode);
+        settingsChanged |= !cpu_power_mode.equalsIgnoreCase(humanSegConfig.cpuPowerMode);
         String input_color_format =
                 sharedPreferences.getString(getString(R.string.INPUT_COLOR_FORMAT_KEY),
                         getString(R.string.INPUT_COLOR_FORMAT_DEFAULT));
-        settingsChanged |= !input_color_format.equalsIgnoreCase(config.inputColorFormat);
+        settingsChanged |= !input_color_format.equalsIgnoreCase(humanSegConfig.inputColorFormat);
         long[] input_shape =
                 Utils.parseLongsFromString(sharedPreferences.getString(getString(R.string.INPUT_SHAPE_KEY),
                         getString(R.string.INPUT_SHAPE_DEFAULT)), ",");
 
-        settingsChanged |= input_shape.length != config.inputShape.length;
+        settingsChanged |= input_shape.length != humanSegConfig.inputShape.length;
 
         if (!settingsChanged) {
             for (int i = 0; i < input_shape.length; i++) {
-                settingsChanged |= input_shape[i] != config.inputShape[i];
+                settingsChanged |= input_shape[i] != humanSegConfig.inputShape[i];
             }
         }
 
         if (settingsChanged) {
-            config.init(model_path, label_path, image_path, background_path, cpu_thread_num, cpu_power_mode,
+            humanSegConfig.init(model_path, label_path, image_path, background_path, cpu_thread_num, cpu_power_mode,
                     input_color_format, input_shape);
-            preprocess.init(config);
+            humanSegPreprocess.init(humanSegConfig);
             // update UI
-            tvInputSetting.setText("Model: " + config.modelPath.substring(config.modelPath.lastIndexOf("/") + 1) + "\n" + "CPU" +
-                    " Thread Num: " + Integer.toString(config.cpuThreadNum) + "\n" + "CPU Power Mode: " + config.cpuPowerMode);
+            tvInputSetting.setText("Model: " + humanSegConfig.modelPath.substring(humanSegConfig.modelPath.lastIndexOf("/") + 1) + "\n" + "CPU" +
+                    " Thread Num: " + Integer.toString(humanSegConfig.cpuThreadNum) + "\n" + "CPU Power Mode: " + humanSegConfig.cpuPowerMode);
             tvInputSetting.scrollTo(0, 0);
             // reload model if configure has been changed
             loadModel();
@@ -383,8 +368,8 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onDestroy() {
-        if (predictor != null) {
-            predictor.releaseModel();
+        if (humanSegPredictor != null) {
+            humanSegPredictor.releaseModel();
         }
         worker.quit();
         super.onDestroy();

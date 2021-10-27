@@ -3,17 +3,18 @@ package com.baidu.paddle.lite.demo.segmentation.preprocess;
 import android.graphics.Bitmap;
 import android.util.Log;
 
-import com.baidu.paddle.lite.demo.segmentation.config.Config;
+import com.baidu.paddle.lite.demo.segmentation.config.HumanSegConfig;
 
 import static android.graphics.Color.blue;
 import static android.graphics.Color.green;
 import static android.graphics.Color.red;
 
-public class Preprocess {
+public class HumanSegPreprocess {
 
-    private static final String TAG = Preprocess.class.getSimpleName();
+    private static final String TAG = HumanSegPreprocess.class.getSimpleName();
 
-    Config config;
+    HumanSegConfig humanSegConfig;
+    // 颜色通道数目，例如：RGB 时 channels 应为 3
     int channels;
     int width;
     int height;
@@ -25,11 +26,11 @@ public class Preprocess {
      */
     public  float[] inputData;
 
-    public void init(Config config){
-        this.config = config;
-        this.channels = (int) config.inputShape[1];
-        this.height = (int) config.inputShape[2];
-        this.width = (int) config.inputShape[3];
+    public void init(HumanSegConfig humanSegConfig){
+        this.humanSegConfig = humanSegConfig;
+        this.channels = (int) humanSegConfig.inputShape[1];
+        this.height = (int) humanSegConfig.inputShape[2];
+        this.width = (int) humanSegConfig.inputShape[3];
         this.inputData = new float[channels * width * height];
     }
 
@@ -43,12 +44,12 @@ public class Preprocess {
 
         if (channels == 3) {
             int[] channelIdx = null;
-            if (config.inputColorFormat.equalsIgnoreCase("RGB")) {
+            if (humanSegConfig.inputColorFormat.equalsIgnoreCase("RGB")) {
                 channelIdx = new int[]{0, 1, 2};
-            } else if (config.inputColorFormat.equalsIgnoreCase("BGR")) {
+            } else if (humanSegConfig.inputColorFormat.equalsIgnoreCase("BGR")) {
                 channelIdx = new int[]{2, 1, 0};
             } else {
-                Log.i(TAG, "unknown color format " + config.inputColorFormat + ", only RGB and BGR color format is " +
+                Log.i(TAG, "unknown color format " + humanSegConfig.inputColorFormat + ", only RGB and BGR color format is " +
                         "supported!");
                 return false;
             }

@@ -21,7 +21,9 @@ import kotlinx.coroutines.launch
 import java.io.*
 import java.util.*
 
-
+/**
+ * 用于录屏并播放
+ */
 class GetScreenActivity : AppCompatActivity() {
 
     private val REQUEST_CODE = 1000

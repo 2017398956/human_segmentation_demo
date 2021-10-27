@@ -8,7 +8,7 @@ import android.preference.PreferenceManager;
 import com.baidu.paddle.lite.demo.segmentation.R;
 import com.baidu.paddle.lite.demo.segmentation.Utils;
 
-public class Config {
+public class HumanSegConfig {
 
     public String modelPath = "";
     public String labelPath = "";
@@ -41,8 +41,8 @@ public class Config {
 
     }
 
-    public static Config defaultConfig(Context context) {
-        Config config = new Config();
+    public static HumanSegConfig defaultConfig(Context context) {
+        HumanSegConfig humanSegConfig = new HumanSegConfig();
         SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
         String model_path = sharedPreferences.getString(context.getString(R.string.MODEL_PATH_KEY),
                 context.getString(R.string.MODEL_PATH_DEFAULT));
@@ -65,9 +65,9 @@ public class Config {
         long[] input_shape =
                 Utils.parseLongsFromString(sharedPreferences.getString(context.getString(R.string.INPUT_SHAPE_KEY),
                         context.getString(R.string.INPUT_SHAPE_DEFAULT)), ",");
-        config.init(model_path, label_path, image_path, background_path, cpu_thread_num, cpu_power_mode,
+        humanSegConfig.init(model_path, label_path, image_path, background_path, cpu_thread_num, cpu_power_mode,
                 input_color_format, input_shape);
-        return config;
+        return humanSegConfig;
     }
 
 }

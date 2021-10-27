@@ -1,7 +1,6 @@
 package com.baidu.paddle.lite.demo.segmentation;
 
 import android.content.Context;
-import android.content.SyncContext;
 import android.graphics.Bitmap;
 import android.util.Log;
 
@@ -9,18 +8,23 @@ import com.baidu.paddle.lite.MobileConfig;
 import com.baidu.paddle.lite.PaddlePredictor;
 import com.baidu.paddle.lite.PowerMode;
 import com.baidu.paddle.lite.Tensor;
-import com.baidu.paddle.lite.demo.segmentation.config.Config;
-import com.baidu.paddle.lite.demo.segmentation.preprocess.Preprocess;
+import com.baidu.paddle.lite.demo.segmentation.config.HumanSegConfig;
+import com.baidu.paddle.lite.demo.segmentation.preprocess.HumanSegPreprocess;
 import com.baidu.paddle.lite.demo.segmentation.util.Visualize;
 
 import java.io.File;
 import java.io.InputStream;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Vector;
 
-public class Predictor {
-    private static final String TAG = Predictor.class.getSimpleName();
+public class HumanSegPredictor {
+    private static final String TAG = HumanSegPredictor.class.getSimpleName();
+    private final String DEFAULT_MODEL_FILE_NAME = "shufflenetv2_humanseg_192x192_with_softmax.nb";
+//    private final String DEFAULT_MODEL_FILE_NAME = "hrnet_w18_small.nb";
+    private Map<String , PowerMode> cpuPowerModes = new HashMap<>() ;
     protected Vector<String> wordLabels = new Vector<String>();
-    private Config config = null;
+    private HumanSegConfig humanSegConfig = null;
     protected Bitmap inputImage = null;
     public Bitmap scaledImage = null;
     protected Bitmap outputImage = null;
@@ -39,32 +43,42 @@ public class Predictor {
     protected PaddlePredictor paddlePredictor = null;
     protected float inferenceTime = 0;
 
-    public Predictor() {
+    public HumanSegPredictor() {
         super();
+        initData();
     }
 
-    public boolean init(Context appCtx, Config config) {
-        this.config = config;
+    protected void initData(){
+        cpuPowerModes.put("LITE_POWER_HIGH" , PowerMode.LITE_POWER_HIGH) ;
+        cpuPowerModes.put("LITE_POWER_LOW" , PowerMode.LITE_POWER_LOW) ;
+        cpuPowerModes.put("LITE_POWER_FULL" , PowerMode.LITE_POWER_FULL) ;
+        cpuPowerModes.put("LITE_POWER_NO_BIND" , PowerMode.LITE_POWER_NO_BIND) ;
+        cpuPowerModes.put("LITE_POWER_RAND_HIGH" , PowerMode.LITE_POWER_RAND_HIGH) ;
+        cpuPowerModes.put("LITE_POWER_RAND_LOW" , PowerMode.LITE_POWER_RAND_LOW) ;
+    }
+
+    public boolean init(Context appCtx, HumanSegConfig humanSegConfig) {
+        this.humanSegConfig = humanSegConfig;
         this.appCtx = appCtx;
-        if (config.inputShape.length != 4) {
+        if (humanSegConfig.inputShape.length != 4) {
             Log.i(TAG, "size of input shape should be: 4");
             return false;
         }
-        if (config.inputShape[0] != 1) {
+        if (humanSegConfig.inputShape[0] != 1) {
             Log.i(TAG, "only one batch is supported in the image classification demo, you can use any batch size in " +
                     "your Apps!");
             return false;
         }
-        if (config.inputShape[1] != 1 && config.inputShape[1] != 3) {
+        if (humanSegConfig.inputShape[1] != 1 && humanSegConfig.inputShape[1] != 3) {
             Log.i(TAG, "only one/three channels are supported in the image classification demo, you can use any " +
                     "channel size in your Apps!");
             return false;
         }
-        if (!config.inputColorFormat.equalsIgnoreCase("RGB") && !config.inputColorFormat.equalsIgnoreCase("BGR")) {
+        if (!humanSegConfig.inputColorFormat.equalsIgnoreCase("RGB") && !humanSegConfig.inputColorFormat.equalsIgnoreCase("BGR")) {
             Log.i(TAG, "only RGB and BGR color format is supported.");
             return false;
         }
-        isLoaded = loadModel(config.modelPath, config.cpuThreadNum, config.cpuPowerMode);
+        isLoaded = loadModel(humanSegConfig.modelPath, humanSegConfig.cpuThreadNum, humanSegConfig.cpuPowerMode);
         return isLoaded;
     }
 
@@ -126,26 +140,16 @@ public class Predictor {
         if (realPath.isEmpty()) {
             return false;
         }
-        MobileConfig config = new MobileConfig();
-        config.setModelFromFile(realPath + File.separator + "hrnet_w18_small.nb");
-        config.setThreads(cpuThreadNum);
-        if (cpuPowerMode.equalsIgnoreCase("LITE_POWER_HIGH")) {
-            config.setPowerMode(PowerMode.LITE_POWER_HIGH);
-        } else if (cpuPowerMode.equalsIgnoreCase("LITE_POWER_LOW")) {
-            config.setPowerMode(PowerMode.LITE_POWER_LOW);
-        } else if (cpuPowerMode.equalsIgnoreCase("LITE_POWER_FULL")) {
-            config.setPowerMode(PowerMode.LITE_POWER_FULL);
-        } else if (cpuPowerMode.equalsIgnoreCase("LITE_POWER_NO_BIND")) {
-            config.setPowerMode(PowerMode.LITE_POWER_NO_BIND);
-        } else if (cpuPowerMode.equalsIgnoreCase("LITE_POWER_RAND_HIGH")) {
-            config.setPowerMode(PowerMode.LITE_POWER_RAND_HIGH);
-        } else if (cpuPowerMode.equalsIgnoreCase("LITE_POWER_RAND_LOW")) {
-            config.setPowerMode(PowerMode.LITE_POWER_RAND_LOW);
-        } else {
+        MobileConfig mobileConfig = new MobileConfig();
+        mobileConfig.setModelFromFile(realPath + File.separator + DEFAULT_MODEL_FILE_NAME);
+        mobileConfig.setThreads(cpuThreadNum);
+        PowerMode powerMode = cpuPowerModes.get(cpuPowerMode);
+        if (null == powerMode){
             Log.e(TAG, "unknown cpu power mode!");
             return false;
         }
-        paddlePredictor = PaddlePredictor.createPaddlePredictor(config);
+        mobileConfig.setPowerMode(cpuPowerModes.get(cpuPowerMode));
+        paddlePredictor = PaddlePredictor.createPaddlePredictor(mobileConfig);
         this.cpuThreadNum = cpuThreadNum;
         this.cpuPowerMode = cpuPowerMode;
         this.modelPath = realPath;
@@ -153,7 +157,7 @@ public class Predictor {
         return true;
     }
 
-    public boolean runModel() {
+    private boolean runModel() {
         if (!isLoaded()) {
             return false;
         }
@@ -166,7 +170,8 @@ public class Predictor {
         for (int i = 0; i < inferIterNum; i++) {
             paddlePredictor.run();
         }
-        Log.d("NFL" , "转换消耗的时间：" + (System.currentTimeMillis() - startTime)) ;
+        inferenceTime = System.currentTimeMillis() - startTime ;
+        Log.d("NFL" , "转换消耗的时间：" + inferenceTime) ;
         return true;
     }
 
@@ -175,16 +180,15 @@ public class Predictor {
         return runModel();
     }
 
-    public boolean runModel(Preprocess preprocess, Visualize visualize) {
+    public boolean runModel(HumanSegPreprocess humanSegPreprocess, Visualize visualize) {
         if (inputImage == null) {
             return false;
         }
-
         // set input shape
         Tensor inputTensor = getInput(0);
-        inputTensor.resize(config.inputShape);
+        inputTensor.resize(humanSegConfig.inputShape);
 
-        inputTensor.setData(preprocess.inputData);
+        inputTensor.setData(humanSegPreprocess.inputData);
         // inference
         runModel();
         Tensor outputTensor = getOutput(0);
@@ -201,8 +205,8 @@ public class Predictor {
         modelName = "";
     }
 
-    public void setConfig(Config config) {
-        this.config = config;
+    public void setConfig(HumanSegConfig humanSegConfig) {
+        this.humanSegConfig = humanSegConfig;
     }
 
     public Bitmap inputImage() {
@@ -252,7 +256,7 @@ public class Predictor {
         // scale image to the size of input tensor
         Bitmap rgbaImage = image.copy(Bitmap.Config.ARGB_8888, true);
         // 1,3,192,192
-        Bitmap scaleImage = Bitmap.createScaledBitmap(rgbaImage, (int) this.config.inputShape[3], (int) this.config.inputShape[2], true);
+        Bitmap scaleImage = Bitmap.createScaledBitmap(rgbaImage, (int) this.humanSegConfig.inputShape[3], (int) this.humanSegConfig.inputShape[2], true);
         this.inputImage = rgbaImage;
         this.scaledImage = scaleImage;
     }
