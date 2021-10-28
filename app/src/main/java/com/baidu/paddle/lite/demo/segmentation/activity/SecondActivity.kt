@@ -50,7 +50,9 @@ class SecondActivity : AppCompatActivity(), CameraXConfig.Provider {
                 }
                 val startTime = System.currentTimeMillis()
                 for (i in 0 until 100) {
-                    val image = ImageUtil.getBitmapByPath(this@SecondActivity,"image_segmentation/images/human${i % 4 + 1}.jpg")
+                    // val imagePath = "image_segmentation/images/human${i % 4 + 1}.jpg"
+                    val imagePath = "image_segmentation/images/human1.jpg"
+                    val image = ImageUtil.getBitmapByPath(this@SecondActivity,imagePath)
                     SegmentationUtil.instance.refreshInputBitmap(image)
                     replaceBackgroundVisualize.setBackgroundImage(SegmentationUtil.instance.backgroundImage)
                     replaceBackgroundVisualize.setScaledImage(SegmentationUtil.instance.scaledImage)
