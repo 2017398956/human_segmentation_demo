@@ -57,9 +57,9 @@ public class SegmentationUtil {
     }
 
     public void refreshInputBitmap(Bitmap image) {
-        humanSegPredictor.init(this.context, humanSegConfig);
+        // humanSegPredictor.init(this.context, humanSegConfig);
         humanSegPredictor.setInputImage(image);
-        humanSegPreprocess.init(humanSegConfig);
+        // humanSegPreprocess.init(humanSegConfig);
         humanSegPreprocess.to_array(humanSegPredictor.scaledImage);
         humanSegPreprocess.normalize(humanSegPreprocess.inputData);
     }

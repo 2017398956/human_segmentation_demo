@@ -13,12 +13,14 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
 import cc.rome753.yuvtools.YUVTools
 import com.baidu.paddle.lite.demo.segmentation.databinding.ActivitySecondBinding
+import com.baidu.paddle.lite.demo.segmentation.util.ImageUtil
 import com.baidu.paddle.lite.demo.segmentation.util.SegmentationUtil
 import com.baidu.paddle.lite.demo.segmentation.visual.ReplaceBackgroundVisualize
 import com.google.common.util.concurrent.ListenableFuture
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.concurrent.Executors
 
 class SecondActivity : AppCompatActivity(), CameraXConfig.Provider {
@@ -27,13 +29,12 @@ class SecondActivity : AppCompatActivity(), CameraXConfig.Provider {
     private val imageAnalysisExecutor = Executors.newSingleThreadExecutor()
     private val replaceBackgroundVisualize = ReplaceBackgroundVisualize()
     private val cameraExecutor = Executors.newSingleThreadExecutor()
-    private val testExecutor = Executors.newFixedThreadPool(100)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivitySecondBinding.inflate(layoutInflater)
         setContentView(binding.root)
-//        initSegmentation()
-        initCamera()
+        initSegmentation()
+//        initCamera()
     }
 
     private fun initSegmentation() {
@@ -43,28 +44,25 @@ class SecondActivity : AppCompatActivity(), CameraXConfig.Provider {
                 replaceBackgroundVisualize.setBackgroundImage(SegmentationUtil.instance.backgroundImage)
                 replaceBackgroundVisualize.setScaledImage(SegmentationUtil.instance.scaledImage)
                 if (SegmentationUtil.instance.runModel(replaceBackgroundVisualize)) {
-                    GlobalScope.launch(Dispatchers.Main) {
+                    withContext(Dispatchers.Main){
                         binding.ivShow.setImageBitmap(SegmentationUtil.instance.segmentationBitmap)
                     }
                 }
                 val startTime = System.currentTimeMillis()
                 for (i in 0 until 100) {
-                    testExecutor.execute {
-                        val image =
-                            BitmapFactory.decodeStream(assets.open("image_segmentation/images/human${i % 4 + 1}.jpg"))
-                        SegmentationUtil.instance.refreshInputBitmap(image)
-                        replaceBackgroundVisualize.setBackgroundImage(SegmentationUtil.instance.backgroundImage)
-                        replaceBackgroundVisualize.setScaledImage(SegmentationUtil.instance.scaledImage)
-                        if (SegmentationUtil.instance.runModel(replaceBackgroundVisualize)) {
-                            GlobalScope.launch(Dispatchers.Main) {
-                                binding.ivShow.setImageBitmap(SegmentationUtil.instance.segmentationBitmap)
-                                if (i == 99) {
-                                    Toast.makeText(
-                                        this@SecondActivity,
-                                        "帧率：${100 * 1000 / (System.currentTimeMillis() - startTime)}",
-                                        Toast.LENGTH_SHORT
-                                    ).show()
-                                }
+                    val image = ImageUtil.getBitmapByPath(this@SecondActivity,"image_segmentation/images/human${i % 4 + 1}.jpg")
+                    SegmentationUtil.instance.refreshInputBitmap(image)
+                    replaceBackgroundVisualize.setBackgroundImage(SegmentationUtil.instance.backgroundImage)
+                    replaceBackgroundVisualize.setScaledImage(SegmentationUtil.instance.scaledImage)
+                    if (SegmentationUtil.instance.runModel(replaceBackgroundVisualize)) {
+                        GlobalScope.launch(Dispatchers.Main) {
+                            binding.ivShow.setImageBitmap(SegmentationUtil.instance.segmentationBitmap)
+                            if (i == 99) {
+                                Toast.makeText(
+                                    this@SecondActivity,
+                                    "帧率：${100 * 1000 / (System.currentTimeMillis() - startTime)}",
+                                    Toast.LENGTH_SHORT
+                                ).show()
                             }
                         }
                     }

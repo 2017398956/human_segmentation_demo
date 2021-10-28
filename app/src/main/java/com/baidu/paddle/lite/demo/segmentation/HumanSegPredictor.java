@@ -164,7 +164,7 @@ public class HumanSegPredictor {
         long startTime = System.currentTimeMillis() ;
         // warm up (warmupIterNum = 0)
         for (int i = 0; i < warmupIterNum; i++) {
-            paddlePredictor.run();
+            // paddlePredictor.run();
         }
         // inference (inferIterNum = 1)
         for (int i = 0; i < inferIterNum; i++) {

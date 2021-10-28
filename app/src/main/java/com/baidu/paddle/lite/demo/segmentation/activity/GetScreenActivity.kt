@@ -130,7 +130,7 @@ class GetScreenActivity : AppCompatActivity() {
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         if (resultCode != RESULT_OK || requestCode != REQUEST_CODE) return
-        mMediaProjection = mMediaProjectionManager!!.getMediaProjection(resultCode, data)
+        mMediaProjection = mMediaProjectionManager!!.getMediaProjection(resultCode, data!!)
         if (mMediaProjection == null) {
             Log.e("NFL", "获取屏幕失败！");
             return

@@ -43,13 +43,12 @@ public class SettingsActivity extends AppCompatPreferenceActivity implements Sha
         if (supportActionBar != null) {
             supportActionBar.setDisplayHomeAsUpEnabled(true);
         }
-
+        initView();
         // initialized pre-installed models
         preInstalledModelPaths = new ArrayList<String>();
         preInstalledLabelPaths = new ArrayList<String>();
         preInstalledImagePaths = new ArrayList<String>();
         preInstalledBackgroundPaths = new ArrayList<>();
-
         preInstalledCPUThreadNums = new ArrayList<String>();
         preInstalledCPUPowerModes = new ArrayList<String>();
         preInstalledInputColorFormats = new ArrayList<String>();
@@ -62,8 +61,6 @@ public class SettingsActivity extends AppCompatPreferenceActivity implements Sha
         preInstalledCPUPowerModes.add(getString(R.string.CPU_POWER_MODE_DEFAULT));
         preInstalledInputColorFormats.add(getString(R.string.INPUT_COLOR_FORMAT_DEFAULT));
         // initialize UI components
-        lpChoosePreInstalledModel =
-                (ListPreference) findPreference(getString(R.string.CHOOSE_PRE_INSTALLED_MODEL_KEY));
         String[] preInstalledModelNames = new String[preInstalledModelPaths.size()];
         for (int i = 0; i < preInstalledModelPaths.size(); i++) {
             preInstalledModelNames[i] =
@@ -71,27 +68,25 @@ public class SettingsActivity extends AppCompatPreferenceActivity implements Sha
         }
         lpChoosePreInstalledModel.setEntries(preInstalledModelNames);
         lpChoosePreInstalledModel.setEntryValues(preInstalledModelPaths.toArray(new String[preInstalledModelPaths.size()]));
-        cbEnableCustomSettings =
-                (CheckBoxPreference) findPreference(getString(R.string.ENABLE_CUSTOM_SETTINGS_KEY));
+    }
+
+    private void initView(){
+        lpChoosePreInstalledModel = (ListPreference) findPreference(getString(R.string.CHOOSE_PRE_INSTALLED_MODEL_KEY));
+        cbEnableCustomSettings = (CheckBoxPreference) findPreference(getString(R.string.ENABLE_CUSTOM_SETTINGS_KEY));
         etModelPath = (EditTextPreference) findPreference(getString(R.string.MODEL_PATH_KEY));
         etModelPath.setTitle("Model Path (SDCard: " + Utils.getSDCardDirectory() + ")");
         etLabelPath = (EditTextPreference) findPreference(getString(R.string.LABEL_PATH_KEY));
         etImagePath = (EditTextPreference) findPreference(getString(R.string.IMAGE_PATH_KEY));
         etBackgroundPath = (EditTextPreference) findPreference(getString(R.string.BACKGROUND_PATH_KEY)) ;
-        lpCPUThreadNum =
-                (ListPreference) findPreference(getString(R.string.CPU_THREAD_NUM_KEY));
-        lpCPUPowerMode =
-                (ListPreference) findPreference(getString(R.string.CPU_POWER_MODE_KEY));
-        lpInputColorFormat =
-                (ListPreference) findPreference(getString(R.string.INPUT_COLOR_FORMAT_KEY));
+        lpCPUThreadNum = (ListPreference) findPreference(getString(R.string.CPU_THREAD_NUM_KEY));
+        lpCPUPowerMode = (ListPreference) findPreference(getString(R.string.CPU_POWER_MODE_KEY));
+        lpInputColorFormat = (ListPreference) findPreference(getString(R.string.INPUT_COLOR_FORMAT_KEY));
     }
 
     private void reloadPreferenceAndUpdateUI() {
         SharedPreferences sharedPreferences = getPreferenceScreen().getSharedPreferences();
-        boolean enableCustomSettings =
-                sharedPreferences.getBoolean(getString(R.string.ENABLE_CUSTOM_SETTINGS_KEY), false);
-        String modelPath = sharedPreferences.getString(getString(R.string.CHOOSE_PRE_INSTALLED_MODEL_KEY),
-                getString(R.string.MODEL_PATH_DEFAULT));
+        boolean enableCustomSettings = sharedPreferences.getBoolean(getString(R.string.ENABLE_CUSTOM_SETTINGS_KEY), false);
+        String modelPath = sharedPreferences.getString(getString(R.string.CHOOSE_PRE_INSTALLED_MODEL_KEY), getString(R.string.MODEL_PATH_DEFAULT));
         int modelIdx = lpChoosePreInstalledModel.findIndexOfValue(modelPath);
         if (modelIdx >= 0 && modelIdx < preInstalledModelPaths.size()) {
             if (!enableCustomSettings) {
@@ -99,12 +94,10 @@ public class SettingsActivity extends AppCompatPreferenceActivity implements Sha
                 editor.putString(getString(R.string.MODEL_PATH_KEY), preInstalledModelPaths.get(modelIdx));
                 editor.putString(getString(R.string.LABEL_PATH_KEY), preInstalledLabelPaths.get(modelIdx));
                 editor.putString(getString(R.string.IMAGE_PATH_KEY), preInstalledImagePaths.get(modelIdx));
-                editor.putString(getString(R.string.BACKGROUND_PATH_KEY),
-                        preInstalledBackgroundPaths.get(modelIdx)) ;
+                editor.putString(getString(R.string.BACKGROUND_PATH_KEY), preInstalledBackgroundPaths.get(modelIdx)) ;
                 editor.putString(getString(R.string.CPU_THREAD_NUM_KEY), preInstalledCPUThreadNums.get(modelIdx));
                 editor.putString(getString(R.string.CPU_POWER_MODE_KEY), preInstalledCPUPowerModes.get(modelIdx));
-                editor.putString(getString(R.string.INPUT_COLOR_FORMAT_KEY),
-                        preInstalledInputColorFormats.get(modelIdx));
+                editor.putString(getString(R.string.INPUT_COLOR_FORMAT_KEY), preInstalledInputColorFormats.get(modelIdx));
                 editor.commit();
             }
             lpChoosePreInstalledModel.setSummary(modelPath);
@@ -145,7 +138,6 @@ public class SettingsActivity extends AppCompatPreferenceActivity implements Sha
         lpCPUPowerMode.setSummary(cpuPowerMode);
         lpInputColorFormat.setValue(inputColorFormat);
         lpInputColorFormat.setSummary(inputColorFormat);
-
     }
 
     @Override
