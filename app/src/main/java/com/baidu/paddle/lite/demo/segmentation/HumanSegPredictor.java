@@ -20,8 +20,8 @@ import java.util.Vector;
 
 public class HumanSegPredictor {
     private static final String TAG = HumanSegPredictor.class.getSimpleName();
-    private final String DEFAULT_MODEL_FILE_NAME = "shufflenetv2_humanseg_192x192_with_softmax.nb";
-//    private final String DEFAULT_MODEL_FILE_NAME = "hrnet_w18_small.nb";
+//    private final String DEFAULT_MODEL_FILE_NAME = "shufflenetv2_humanseg_192x192_with_softmax.nb";
+    private final String DEFAULT_MODEL_FILE_NAME = "hrnet_w18_small.nb";
     private Map<String , PowerMode> cpuPowerModes = new HashMap<>() ;
     protected Vector<String> wordLabels = new Vector<String>();
     private HumanSegConfig humanSegConfig = null;
@@ -187,7 +187,6 @@ public class HumanSegPredictor {
         // set input shape
         Tensor inputTensor = getInput(0);
         inputTensor.resize(humanSegConfig.inputShape);
-
         inputTensor.setData(humanSegPreprocess.inputData);
         // inference
         runModel();

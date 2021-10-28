@@ -29,6 +29,7 @@ public class SettingsActivity extends AppCompatPreferenceActivity implements Sha
     List<String> preInstalledModelPaths = null;
     List<String> preInstalledLabelPaths = null;
     List<String> preInstalledImagePaths = null;
+    List<String> preInstalledBackgroundPaths = null ;
     List<String> preInstalledCPUThreadNums = null;
     List<String> preInstalledCPUPowerModes = null;
     List<String> preInstalledInputColorFormats = null;
@@ -47,6 +48,7 @@ public class SettingsActivity extends AppCompatPreferenceActivity implements Sha
         preInstalledModelPaths = new ArrayList<String>();
         preInstalledLabelPaths = new ArrayList<String>();
         preInstalledImagePaths = new ArrayList<String>();
+        preInstalledBackgroundPaths = new ArrayList<>();
 
         preInstalledCPUThreadNums = new ArrayList<String>();
         preInstalledCPUPowerModes = new ArrayList<String>();
@@ -55,6 +57,7 @@ public class SettingsActivity extends AppCompatPreferenceActivity implements Sha
         preInstalledModelPaths.add(getString(R.string.MODEL_PATH_DEFAULT));
         preInstalledLabelPaths.add(getString(R.string.LABEL_PATH_DEFAULT));
         preInstalledImagePaths.add(getString(R.string.IMAGE_PATH_DEFAULT));
+        preInstalledBackgroundPaths.add(getString(R.string.BACKGROUND_PATH_DEFAULT));
         preInstalledCPUThreadNums.add(getString(R.string.CPU_THREAD_NUM_DEFAULT));
         preInstalledCPUPowerModes.add(getString(R.string.CPU_POWER_MODE_DEFAULT));
         preInstalledInputColorFormats.add(getString(R.string.INPUT_COLOR_FORMAT_DEFAULT));
@@ -97,7 +100,7 @@ public class SettingsActivity extends AppCompatPreferenceActivity implements Sha
                 editor.putString(getString(R.string.LABEL_PATH_KEY), preInstalledLabelPaths.get(modelIdx));
                 editor.putString(getString(R.string.IMAGE_PATH_KEY), preInstalledImagePaths.get(modelIdx));
                 editor.putString(getString(R.string.BACKGROUND_PATH_KEY),
-                        preInstalledInputColorFormats.get(modelIdx)) ;
+                        preInstalledBackgroundPaths.get(modelIdx)) ;
                 editor.putString(getString(R.string.CPU_THREAD_NUM_KEY), preInstalledCPUThreadNums.get(modelIdx));
                 editor.putString(getString(R.string.CPU_POWER_MODE_KEY), preInstalledCPUPowerModes.get(modelIdx));
                 editor.putString(getString(R.string.INPUT_COLOR_FORMAT_KEY),
@@ -148,8 +151,8 @@ public class SettingsActivity extends AppCompatPreferenceActivity implements Sha
     @Override
     protected void onResume() {
         super.onResume();
-        getPreferenceScreen().getSharedPreferences().registerOnSharedPreferenceChangeListener(this);
         reloadPreferenceAndUpdateUI();
+        getPreferenceScreen().getSharedPreferences().registerOnSharedPreferenceChangeListener(this);
     }
 
     @Override
