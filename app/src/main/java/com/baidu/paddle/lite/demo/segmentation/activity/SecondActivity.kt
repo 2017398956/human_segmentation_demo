@@ -1,16 +1,17 @@
 package com.baidu.paddle.lite.demo.segmentation.activity
 
-import android.graphics.BitmapFactory
+import android.graphics.Paint
+import android.graphics.Rect
 import android.os.Bundle
 import android.util.Log
 import android.util.Size
+import android.view.SurfaceHolder
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.camera2.Camera2Config
 import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.LifecycleOwner
 import cc.rome753.yuvtools.YUVTools
 import com.baidu.paddle.lite.demo.segmentation.databinding.ActivitySecondBinding
 import com.baidu.paddle.lite.demo.segmentation.util.ImageUtil
@@ -29,12 +30,21 @@ class SecondActivity : AppCompatActivity(), CameraXConfig.Provider {
     private val imageAnalysisExecutor = Executors.newSingleThreadExecutor()
     private val replaceBackgroundVisualize = ReplaceBackgroundVisualize()
     private val cameraExecutor = Executors.newSingleThreadExecutor()
+    private var surfaceHolder: SurfaceHolder? = null
+    private lateinit var humanSegPaint: Paint
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivitySecondBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        initData()
         initSegmentation()
-//        initCamera()
+        initCamera()
+    }
+
+    private fun initData() {
+        humanSegPaint = Paint(Paint.ANTI_ALIAS_FLAG);
+        humanSegPaint.isFilterBitmap = true;
+        humanSegPaint.isDither = true;
     }
 
     private fun initSegmentation() {
@@ -44,30 +54,7 @@ class SecondActivity : AppCompatActivity(), CameraXConfig.Provider {
                 replaceBackgroundVisualize.setBackgroundImage(SegmentationUtil.instance.backgroundImage)
                 replaceBackgroundVisualize.setScaledImage(SegmentationUtil.instance.scaledImage)
                 if (SegmentationUtil.instance.runModel(replaceBackgroundVisualize)) {
-                    withContext(Dispatchers.Main){
-                        binding.ivShow.setImageBitmap(SegmentationUtil.instance.segmentationBitmap)
-                    }
-                }
-                val startTime = System.currentTimeMillis()
-                for (i in 0 until 100) {
-                    // val imagePath = "image_segmentation/images/human${i % 4 + 1}.jpg"
-                    val imagePath = "image_segmentation/images/human1.jpg"
-                    val image = ImageUtil.getBitmapByPath(this@SecondActivity,imagePath)
-                    SegmentationUtil.instance.refreshInputBitmap(image)
-                    replaceBackgroundVisualize.setBackgroundImage(SegmentationUtil.instance.backgroundImage)
-                    replaceBackgroundVisualize.setScaledImage(SegmentationUtil.instance.scaledImage)
-                    if (SegmentationUtil.instance.runModel(replaceBackgroundVisualize)) {
-                        GlobalScope.launch(Dispatchers.Main) {
-                            binding.ivShow.setImageBitmap(SegmentationUtil.instance.segmentationBitmap)
-                            if (i == 99) {
-                                Toast.makeText(
-                                    this@SecondActivity,
-                                    "帧率：${100 * 1000 / (System.currentTimeMillis() - startTime)}",
-                                    Toast.LENGTH_SHORT
-                                ).show()
-                            }
-                        }
-                    }
+                    // 这里只是准备一下环境，方便后面的刷新操作
                 }
             }
         }
@@ -97,32 +84,33 @@ class SecondActivity : AppCompatActivity(), CameraXConfig.Provider {
                 val rotationDegrees = image.imageInfo.rotationDegrees
                 // insert your code here.
                 Log.i("NFL", "================ ${Thread.currentThread().name}")
-                val bitmap = YUVTools.nv12ToBitmap(
-                    YUVTools.getBytesFromImage(image).bytes,
-                    image.width,
-                    image.height
-                )
-                GlobalScope.launch(Dispatchers.Main) {
-                    binding.ivShow.setImageBitmap(bitmap)
-                }
+                val src = YUVTools.getBytesFromImage(image).bytes
+                val dest = ByteArray(src.size)
+                val width = image.width
+                val height = image.height
+                YUVTools.rotateSP270(src, dest, width, height)
+                val bitmap = YUVTools.nv12ToBitmap(dest, width, height)
                 image.close()
-                if (true) {
-                    return
-                }
-                cameraExecutor.execute {
-                    if (SegmentationUtil.instance.loadModel()) {
-                        SegmentationUtil.instance.refreshInputBitmap(bitmap)
-                        replaceBackgroundVisualize.setBackgroundImage(SegmentationUtil.instance.backgroundImage)
-                        replaceBackgroundVisualize.setScaledImage(SegmentationUtil.instance.scaledImage)
-                        if (SegmentationUtil.instance.runModel(replaceBackgroundVisualize)) {
-                            GlobalScope.launch(Dispatchers.Main) {
-                                binding.ivShow.setImageBitmap(SegmentationUtil.instance.segmentationBitmap)
-                            }
-                        }
+                // 刷新界面
+                SegmentationUtil.instance.refreshInputBitmap(bitmap)
+                replaceBackgroundVisualize.setBackgroundImage(SegmentationUtil.instance.backgroundImage)
+                replaceBackgroundVisualize.setScaledImage(SegmentationUtil.instance.scaledImage)
+                if (SegmentationUtil.instance.runModel(replaceBackgroundVisualize)) {
+                    if (null == surfaceHolder) {
+                        surfaceHolder = binding.svHumanSeg.holder
                     }
+                    val canvas = surfaceHolder!!.lockCanvas()
+                    val srcRect = Rect(0, 0, width, height)
+                    val destRect = Rect(0, 0, width, height)
+                    canvas.drawBitmap(
+                        SegmentationUtil.instance.segmentationBitmap,
+                        srcRect,
+                        destRect,
+                        humanSegPaint
+                    )
+                    surfaceHolder!!.unlockCanvasAndPost(canvas)
                 }
             }
-
         })
 
         cameraProvider.unbindAll()

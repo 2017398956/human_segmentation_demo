@@ -237,6 +237,11 @@ public class MainActivity extends AppCompatActivity {
                     onSettingsClicked();
                 }
                 break;
+            case R.id.human_seg:
+                if (requestAllPermissions()){
+                    startActivity(new Intent(this , SecondActivity.class));
+                }
+                break;
         }
         return super.onOptionsItemSelected(item);
     }

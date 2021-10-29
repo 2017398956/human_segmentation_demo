@@ -16,7 +16,6 @@ public class ImageUtil {
             try {
                 imageStream = context.getAssets().open(path);
             } catch (IOException e) {
-                Toast.makeText(context, "Load image failed!", Toast.LENGTH_SHORT).show();
                 e.printStackTrace();
             }
             Bitmap temp = BitmapFactory.decodeStream(imageStream);

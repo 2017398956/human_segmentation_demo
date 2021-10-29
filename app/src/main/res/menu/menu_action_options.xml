@@ -18,4 +18,12 @@
                 android:title="Settings..."
                 app:showAsAction="withText"/>
     </group>
+
+    <group>
+        <item
+                android:id="@+id/human_seg"
+                android:title="HumanSeg"
+                app:showAsAction="withText"
+            />
+    </group>
 </menu>
