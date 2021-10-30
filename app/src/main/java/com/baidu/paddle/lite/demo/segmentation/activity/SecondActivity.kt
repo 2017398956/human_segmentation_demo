@@ -1,5 +1,7 @@
 package com.baidu.paddle.lite.demo.segmentation.activity
 
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Paint
 import android.graphics.Rect
 import android.os.Bundle
@@ -75,20 +77,20 @@ class SecondActivity : AppCompatActivity(), CameraXConfig.Provider {
             .build()
         preview.setSurfaceProvider(binding.previewView.surfaceProvider)
         val imageAnalysis = ImageAnalysis.Builder()
-            .setTargetResolution(Size(1280, 720))
-            .setBackpressureStrategy(ImageAnalysis.STRATEGY_BLOCK_PRODUCER)
+            .setTargetResolution(Size(192, 192))
+            .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
             .build()
 
-        imageAnalysis.setAnalyzer(imageAnalysisExecutor, object : ImageAnalysis.Analyzer {
-            override fun analyze(image: ImageProxy) {
+        imageAnalysis.setAnalyzer(imageAnalysisExecutor,
+            { image ->
                 val rotationDegrees = image.imageInfo.rotationDegrees
-                // insert your code here.
-                Log.i("NFL", "================ ${Thread.currentThread().name}")
-                val src = YUVTools.getBytesFromImage(image).bytes
-                val dest = ByteArray(src.size)
                 val width = image.width
                 val height = image.height
+                Log.i("NFL" , "旋转的度数：${rotationDegrees},图像宽x高：${width}x${height}")
+                val src = YUVTools.getBytesFromImage(image).bytes
+                val dest = ByteArray(src.size)
                 YUVTools.rotateSP270(src, dest, width, height)
+//                val bitmap = YUVTools.nv12ToBitmap(src, width, height)
                 val bitmap = YUVTools.nv12ToBitmap(dest, width, height)
                 image.close()
                 // 刷新界面
@@ -100,18 +102,16 @@ class SecondActivity : AppCompatActivity(), CameraXConfig.Provider {
                         surfaceHolder = binding.svHumanSeg.holder
                     }
                     val canvas = surfaceHolder!!.lockCanvas()
-                    val srcRect = Rect(0, 0, width, height)
-                    val destRect = Rect(0, 0, width, height)
-                    canvas.drawBitmap(
-                        SegmentationUtil.instance.segmentationBitmap,
-                        srcRect,
-                        destRect,
-                        humanSegPaint
-                    )
+                    val outputBitmap = SegmentationUtil.instance.segmentationBitmap
+                    Log.i("NFL" , "输出的图片的宽x高：${outputBitmap.width}x${outputBitmap.height}")
+                    val scale = outputBitmap.height.toFloat() / binding.svHumanSeg.height
+                    val scaleBitmap = Bitmap.createScaledBitmap(outputBitmap ,(outputBitmap.width * scale).toInt() , binding.svHumanSeg.height , true)
+                    val srcRect = Rect(0, 0, scaleBitmap.width, scaleBitmap.height)
+                    val destRect = Rect((binding.svHumanSeg.width - scaleBitmap.width) / 2, 0, scaleBitmap.width, scaleBitmap.height)
+                    canvas.drawBitmap(scaleBitmap, srcRect, destRect, humanSegPaint)
                     surfaceHolder!!.unlockCanvasAndPost(canvas)
                 }
-            }
-        })
+            })
 
         cameraProvider.unbindAll()
         var camera = cameraProvider.bindToLifecycle(
