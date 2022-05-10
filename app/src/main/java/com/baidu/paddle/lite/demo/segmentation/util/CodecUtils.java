@@ -10,15 +10,18 @@ public class CodecUtils {
     public static int NAL_PPS = 8 ;
 
     /**
-     * 处理 4 位长的 byte
+     * 处理不超过 4 位长的 byte
      * @param bytes
      * @return
      */
     public static int bytesToInt(byte[] bytes){
+        if (bytes.length > 4) {
+            throw new RuntimeException("bytes 数组的长度不能超过 4");
+        }
         int value = 0;
-        for(int i = 0; i < 4; i++) {
-            int shift= (3-i) * 8;
-            value +=(bytes[i] & 0xFF) << shift;
+        for (int i = bytes.length - 1; i >= 0; i--) {
+            int shift = (bytes.length - 1 - i) * 8;
+            value += (bytes[i] & 0xFF) << shift;
         }
         return value;
     }

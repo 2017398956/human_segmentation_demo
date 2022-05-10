@@ -17,19 +17,19 @@
         <activity
             android:name=".activity.GetScreenActivity"
             android:exported="true" >
-<!--            <intent-filter>-->
-<!--                <action android:name="android.intent.action.MAIN" />-->
-<!--                <category android:name="android.intent.category.LAUNCHER" />-->
-<!--            </intent-filter>-->
-        </activity>
-        <activity
-            android:name=".activity.SecondActivity"
-            android:hardwareAccelerated="true"
-            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+        </activity>
+        <activity
+            android:name=".activity.HumanSegActivity"
+            android:hardwareAccelerated="true"
+            android:exported="true">
+<!--            <intent-filter>-->
+<!--                <action android:name="android.intent.action.MAIN" />-->
+<!--                <category android:name="android.intent.category.LAUNCHER" />-->
+<!--            </intent-filter>-->
         </activity>
         <activity
             android:name=".activity.MainActivity"
@@ -42,6 +42,7 @@
         <activity
             android:name=".activity.SettingsActivity"
             android:label="Settings" />
+        <service android:name=".service.CaptureScreenService"/>
     </application>
 
 </manifest>

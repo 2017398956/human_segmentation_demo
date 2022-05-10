@@ -239,7 +239,7 @@ public class MainActivity extends AppCompatActivity {
                 break;
             case R.id.human_seg:
                 if (requestAllPermissions()){
-                    startActivity(new Intent(this , SecondActivity.class));
+                    startActivity(new Intent(this , HumanSegActivity.class));
                 }
                 break;
         }

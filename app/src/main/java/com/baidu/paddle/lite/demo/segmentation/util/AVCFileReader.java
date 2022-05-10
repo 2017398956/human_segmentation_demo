@@ -6,23 +6,34 @@ import java.io.File;
 import java.io.FileInputStream;
 
 /**
- * 解析本地文件获取h264视频流数据
+ * 解析本地文件获取的已经修改的 h264 视频流数据
  */
 public class AVCFileReader extends Thread {
+
+    // 一帧数据中前多少位用于保存该帧的长度
+    public final static int FRAME_LENGTH = 4;
     //文件路径
     private String path ;
     //文件读取完成标识
     private boolean isFinish = false;
     private AVCDecoder mDecoder;
     private PlayListener playListener ;
+    private int fps = 30 ;
 
     private AVCFileReader(){}
 
     public AVCFileReader(String videoPath , AVCDecoder decoder){
+        this(videoPath , decoder , 0);
+    }
+
+    public AVCFileReader(String videoPath , AVCDecoder decoder , int fps){
         this.path = videoPath ;
         this.mDecoder = decoder ;
         if (null != playListener){
             playListener.onReady();
+        }
+        if (fps > 0){
+            this.fps = fps ;
         }
     }
 
@@ -35,7 +46,7 @@ public class AVCFileReader extends Thread {
             try {
                 FileInputStream fis = new FileInputStream(file);
                 // 保存帧文件的时候，每帧数据的前4个字节记录了当前帧的长度，方便读取
-                byte[] frameLength = new byte[4];
+                byte[] frameLength = new byte[FRAME_LENGTH];
                 //当前帧长度
                 int frameLen ;
                 //每次从文件读取的数据
@@ -59,7 +70,7 @@ public class AVCFileReader extends Thread {
                         try {
                             // 由于每帧数据读取完毕立即丢给解码器显示，没有时间戳（PTS、DTS）控制解码显示
                             // 这里通过sleep做个简单的显示控制 1000/60 ≈ 16
-                            Thread.sleep(16);
+                            Thread.sleep(1000l / fps);
                         } catch (Exception e) {
                             Log.w(TAG, e);
                         }
@@ -69,6 +80,7 @@ public class AVCFileReader extends Thread {
                     }
                 }
                 if (null != playListener){
+                    Log.d("NFL" , "一共有 " + count + " 帧");
                     playListener.onFinished();
                 }
                 fis.close();
@@ -89,7 +101,7 @@ public class AVCFileReader extends Thread {
 
     /**
      * 将帧内容交给解析器解析
-     * @param frame
+     * @param frame 这里传递的是真实的 h264 数据帧
      * @param offset
      * @param length
      */

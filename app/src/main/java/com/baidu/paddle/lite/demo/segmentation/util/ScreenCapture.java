@@ -1,8 +1,10 @@
 package com.baidu.paddle.lite.demo.segmentation.util;
 
+import android.graphics.ImageFormat;
 import android.hardware.display.DisplayManager;
 import android.hardware.display.VirtualDisplay;
 import android.media.Image;
+import android.media.ImageReader;
 import android.media.MediaCodec;
 import android.media.MediaCodecInfo;
 import android.media.MediaFormat;
@@ -21,11 +23,12 @@ import cc.rome753.yuvtools.YUVTools;
 public class ScreenCapture {
 
     private int width, height;
-    private MediaCodec mEncoder;
-    private MediaFormat mediaFormat;
+    private MediaCodec mediaCodec;
+    private MediaFormat mediaFormat = getDefaultMediaFormat(width , height);
     private String mediaFormatType = MediaFormat.MIMETYPE_VIDEO_AVC;
     private MediaProjection mediaProjection;
     private OnCaptureVideoCallback onCaptureVideoCallback;
+    private OnImageAvailableListener onImageAvailableListener ;
     private VirtualDisplay mVirtualDisplay;
 
     private ScreenCapture() {
@@ -50,7 +53,7 @@ public class ScreenCapture {
             return;
         }
         initEncoder();
-        if (mEncoder == null) {
+        if (mediaCodec == null) {
             Log.w("NFL", "startCapture ignore 2");
             return;
         }
@@ -59,8 +62,8 @@ public class ScreenCapture {
         encodeAsync();
     }
 
-    private void initMediaFormat(){
-        mediaFormat =
+    public static MediaFormat getDefaultMediaFormat(int width , int height){
+        MediaFormat mediaFormat =
                 MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, width, height);
         // 设置视频输入颜色格式，这里选择使用Surface作为输入，可以忽略颜色格式的问题，并且不需要直接操作输入缓冲区。
         mediaFormat.setInteger(
@@ -80,21 +83,36 @@ public class ScreenCapture {
         mediaFormat.setInteger(MediaFormat.KEY_FRAME_RATE, 60);
         // I帧间隔
         mediaFormat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 5);
+        return mediaFormat ;
     }
 
     private void initEncoder() {
-        initMediaFormat();
         try {
-            mEncoder = MediaCodec.createEncoderByType(mediaFormatType);
-            mEncoder.configure(mediaFormat, videoSurface, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                mEncoder.setOutputSurface(videoSurface);
+            // 1.false , true 用于验证 ImageReader
+            // 2.true ， ？ 用于验证直接展示在 videoSurface 上
+            // 3.false ， false 用于验证 mEncoder
+            boolean showInSurfaceView = false;
+            boolean useImageReader = false;
+            mediaCodec = MediaCodec.createEncoderByType(mediaFormatType);
+            mediaCodec.configure(mediaFormat, showInSurfaceView ? null : videoSurface, null,
+                    MediaCodec.CONFIGURE_FLAG_ENCODE);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !showInSurfaceView) {
+//                mEncoder.setOutputSurface(videoSurface);
             }
-            surface = mEncoder.createInputSurface();
+            surface = mediaCodec.createInputSurface();
+            ImageReader imageReader = ImageReader.newInstance(width, height, ImageFormat.YV12, 2);
+            imageReader.setOnImageAvailableListener(reader -> {
+                if (null != onImageAvailableListener){
+                    onImageAvailableListener.onImage(reader.acquireNextImage());
+                }
+            }, null);
             mVirtualDisplay = mediaProjection.createVirtualDisplay(
                     "-display", width, height, 1,
-                    DisplayManager.VIRTUAL_DISPLAY_FLAG_PUBLIC, surface, null, null
+                    DisplayManager.VIRTUAL_DISPLAY_FLAG_PUBLIC, showInSurfaceView ? videoSurface :
+                            (useImageReader ? imageReader.getSurface() : surface),
+                    null, null
             );
+
         } catch (Exception e) {
             Log.w("NFL", e);
         }
@@ -105,7 +123,7 @@ public class ScreenCapture {
      */
     private void encodeAsync() {
         mCaptureThread = new Thread(() -> {
-            mEncoder.setCallback(new MediaCodec.Callback() {
+            mediaCodec.setCallback(new MediaCodec.Callback() {
                 @Override
                 public void onInputBufferAvailable(@NonNull MediaCodec codec, int index) {
                     Log.i("NFL", "onInputBufferAvailable");
@@ -130,7 +148,9 @@ public class ScreenCapture {
                     }
 
                     boolean useImage = false;
-                    if (info.flags == MediaCodec.BUFFER_FLAG_KEY_FRAME || true) {
+                    // 不抛弃非关键帧
+                    boolean doNotAbandonNoKeyFrame = true ;
+                    if (info.flags == MediaCodec.BUFFER_FLAG_KEY_FRAME || doNotAbandonNoKeyFrame) {
                         if (useImage) {
                             Image image = codec.getOutputImage(index);
                             if (image == null) {
@@ -167,7 +187,7 @@ public class ScreenCapture {
                     Log.i("NFL", "onOutputFormatChanged");
                 }
             });
-            mEncoder.start();
+            mediaCodec.start();
         });
         mCaptureThread.start();
     }
@@ -179,14 +199,14 @@ public class ScreenCapture {
         mCaptureThread = new Thread(new Runnable() {
             @Override
             public void run() {
-                mEncoder.start();
+                mediaCodec.start();
                 MediaCodec.BufferInfo bufferInfo = new MediaCodec.BufferInfo();
-                while (isCapturing && mEncoder != null) {
+                while (isCapturing && mediaCodec != null) {
                     try {
-                        int index = mEncoder.dequeueOutputBuffer(bufferInfo, 0);
+                        int index = mediaCodec.dequeueOutputBuffer(bufferInfo, 0);
                         if (index >= 0) {
                             // Log.i(TAG, "dequeueOutputBuffer " + outId);
-                            ByteBuffer buffer = mEncoder.getOutputBuffer(index);
+                            ByteBuffer buffer = mediaCodec.getOutputBuffer(index);
                             byte[] bytes = new byte[bufferInfo.size];
                             buffer.get(bytes);
                             if (null != onCaptureVideoCallback) {
@@ -194,7 +214,7 @@ public class ScreenCapture {
                             } else {
                                 Log.w("NFL", "不应该出现！");
                             }
-                            mEncoder.releaseOutputBuffer(index, false);
+                            mediaCodec.releaseOutputBuffer(index, false);
                         }
                     } catch (Exception e) {
                         Log.w("NFL", e);
@@ -209,8 +229,16 @@ public class ScreenCapture {
         void onCaptureVideo(byte[] bytes, int width, int height);
     }
 
+    public interface OnImageAvailableListener{
+        void onImage(Image image) ;
+    }
+
     public void setOnCaptureVideoCallback(OnCaptureVideoCallback onCaptureVideoCallback) {
         this.onCaptureVideoCallback = onCaptureVideoCallback;
+    }
+
+    public void setOnImageAvailableListener(OnImageAvailableListener onImageAvailableListener) {
+        this.onImageAvailableListener = onImageAvailableListener;
     }
 
     public void stopCapture() {
@@ -224,10 +252,10 @@ public class ScreenCapture {
             mediaProjection.stop();
             mediaProjection = null;
         }
-        if (mEncoder != null) {
-            mEncoder.stop();
-            mEncoder.release();
-            mEncoder = null;
+        if (mediaCodec != null) {
+            mediaCodec.stop();
+            mediaCodec.release();
+            mediaCodec = null;
         }
     }
 

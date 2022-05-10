@@ -2,56 +2,57 @@ package com.baidu.paddle.lite.demo.segmentation.util;
 
 import android.media.MediaCodec;
 import android.media.MediaFormat;
+import android.util.Base64;
 import android.util.Log;
 import android.view.SurfaceView;
 import android.widget.ImageView;
 
+import com.baidu.paddle.lite.demo.segmentation.BuildConfig;
 import com.baidu.paddle.lite.demo.segmentation.beans.VideoFrame;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Arrays;
 import java.util.LinkedList;
-
-import cc.rome753.yuvtools.YUVTools;
 
 public class AVCDecoder {
     private String TAG = "AVCDecoder";
-    private MediaCodec mCodec;
+    private MediaCodec mediaCodec;
     private MediaFormat mediaFormat;
-    private String mediaFormatType ;
-    private int width ;
-    private int height ;
+    private String mediaFormatType;
+    private int width;
+    private int height;
     private SurfaceView mSurfaceView;
     private LinkedList<VideoFrame> mFrameList = new LinkedList<>();
 
-    public ImageView imageView ;
+    public ImageView imageView;
 
     public final static int DECODE_ASYNC = 0;
     public final static int DECODE_SYNC = 1;
     public final static int DECODE_SYNC_DEPRECATED = 2;
-    private int mDecodeType = 0;
+    // 选择解码的工作方式
+    private int mDecodeType = DECODE_ASYNC;
     private LinkedList<Integer> mInputIndexList = new LinkedList<>();
 
-    private AVCDecoder(){}
+    private AVCDecoder() {
+    }
 
-    public AVCDecoder(SurfaceView surfaceView , String mediaFormatType , int width , int height , MediaFormat mediaFormat) {
+    public AVCDecoder(SurfaceView surfaceView, String mediaFormatType, int width, int height, MediaFormat mediaFormat) {
         mSurfaceView = surfaceView;
-        this.mediaFormatType = mediaFormatType ;
-        this.mediaFormat = mediaFormat ;
-        this.width = width ;
-        this.height = height ;
+        this.mediaFormatType = mediaFormatType;
+        this.mediaFormat = mediaFormat;
+        this.width = width;
+        this.height = height;
         initDecoder();
     }
 
     private void initDecoder() {
         try {
-            mCodec = MediaCodec.createDecoderByType(mediaFormatType);
+            mediaCodec = MediaCodec.createDecoderByType(mediaFormatType);
             if (mDecodeType == DECODE_ASYNC) {
-                mCodec.setCallback(new MediaCodec.Callback() {
+                mediaCodec.setCallback(new MediaCodec.Callback() {
                     @Override
                     public void onInputBufferAvailable(MediaCodec codec, int index) {
-                        Log.i("NFL", "onInputBufferAvailable:AVCDecoder"+index);
+                        Log.d("NFL", "onInputBufferAvailable:AVCDecoder " + index);
                         mInputIndexList.add(index);
                     }
 
@@ -87,15 +88,23 @@ public class AVCDecoder {
                     }
                     VideoFrame frame = mFrameList.poll();
                     Integer index = mInputIndexList.poll();
-                    ByteBuffer inputBuffer = mCodec.getInputBuffer(index);
+                    ByteBuffer inputBuffer = mediaCodec.getInputBuffer(index);
                     inputBuffer.clear();
                     inputBuffer.put(frame.buf, frame.offset, frame.length);
-                    mCodec.queueInputBuffer(index, 0, frame.length - frame.offset, 0, 0);
+                    Log.d("NFL", "prepare for AVCDecoder's inputBuffer:" + index);
+                    mediaCodec.queueInputBuffer(index, 0, frame.length - frame.offset, 0, 0);
                 }
             }
         }).start();
     }
 
+    /**
+     * 提供给 {@link AVCFileReader} 用于处理接收的数据
+     *
+     * @param buf    这里传递的是真实的 h264 数据帧
+     * @param offset FIXME：应该为 0 ，因为下面没处理 buf 的偏移量
+     * @param length
+     */
     public void onFrame(byte[] buf, int offset, int length) {
         // 首帧是SPS PPS，需要设置给解码器，才能工作
         if (CodecUtils.getFrameType(buf) == CodecUtils.NAL_SPS) {
@@ -103,15 +112,27 @@ public class AVCDecoder {
             // sps 和 pps 的数据都要包括 0x00 0x00 0x00 0x01
             int ppsPosition = CodecUtils.getPPSPosition(buf);
             if (ppsPosition > 0) {
+                // 获取 sps 和 pps 的数据
                 byte[] sps = new byte[ppsPosition];
                 System.arraycopy(buf, 0, sps, 0, sps.length);
                 byte[] pps = new byte[buf.length - sps.length];
                 System.arraycopy(buf, ppsPosition, pps, 0, pps.length);
+                if (BuildConfig.DEBUG) {
+                    // 将 sps 00 00 00 01 后面的内容转成 base64 以供 spsparser.exe 解析
+                    byte[] spsTemp = new byte[sps.length - 4];
+                    System.arraycopy(sps, 4, spsTemp, 0, spsTemp.length);
+                    Log.d("NFL", "sps:" + Base64.encodeToString(spsTemp, Base64.NO_WRAP));
+                    // 将 pps 00 00 00 01 后面的内容转成 base64 以供 spsparser.exe 解析
+                    byte[] ppsTemp = new byte[pps.length - 4];
+                    System.arraycopy(pps, 4, ppsTemp, 0, ppsTemp.length);
+                    Log.d("NFL", "pps:" + Base64.encodeToString(ppsTemp, Base64.NO_WRAP));
+                }
+                // 设置解码器参数
                 mediaFormat.setByteBuffer("csd-0", ByteBuffer.wrap(sps));
                 mediaFormat.setByteBuffer("csd-1", ByteBuffer.wrap(pps));
-                mCodec.configure(mediaFormat, mSurfaceView.getHolder().getSurface(),
+                mediaCodec.configure(mediaFormat, mSurfaceView.getHolder().getSurface(),
                         null, 0);
-                mCodec.start();
+                mediaCodec.start();
             }
         }else {
             // 视频帧
@@ -135,9 +156,9 @@ public class AVCDecoder {
         }
     }
 
-    public void stop(){
-        mCodec.stop();
-        mCodec.release();
+    public void stop() {
+        mediaCodec.stop();
+        mediaCodec.release();
     }
 
     private void decodeAsync(byte[] buf, int offset, int length) {
@@ -149,40 +170,40 @@ public class AVCDecoder {
     }
 
     private void decodeSync(byte[] buf, int offset, int length) {
-        int inputBufferIndex = mCodec.dequeueInputBuffer(100);
+        int inputBufferIndex = mediaCodec.dequeueInputBuffer(100);
         if (inputBufferIndex >= 0) {
-            ByteBuffer inputBuffer = mCodec.getInputBuffer(inputBufferIndex);
+            ByteBuffer inputBuffer = mediaCodec.getInputBuffer(inputBufferIndex);
             inputBuffer.clear();
             inputBuffer.put(buf, offset, length);
-            mCodec.queueInputBuffer(inputBufferIndex, 0, length, System.currentTimeMillis(), 0);
+            mediaCodec.queueInputBuffer(inputBufferIndex, 0, length, System.currentTimeMillis(), 0);
         } else {
             return;
         }
 
         MediaCodec.BufferInfo bufferInfo = new MediaCodec.BufferInfo();
-        int outputBufferIndex = mCodec.dequeueOutputBuffer(bufferInfo, 100);
+        int outputBufferIndex = mediaCodec.dequeueOutputBuffer(bufferInfo, 100);
         while (outputBufferIndex >= 0) {
-            mCodec.releaseOutputBuffer(outputBufferIndex, true);
-            outputBufferIndex = mCodec.dequeueOutputBuffer(bufferInfo, 0);
+            mediaCodec.releaseOutputBuffer(outputBufferIndex, true);
+            outputBufferIndex = mediaCodec.dequeueOutputBuffer(bufferInfo, 0);
         }
     }
 
     private void decodeDeprecated(byte[] buf, int offset, int length) {
-        ByteBuffer[] inputBuffers = mCodec.getInputBuffers();
-        int inputBufferIndex = mCodec.dequeueInputBuffer(100);
+        ByteBuffer[] inputBuffers = mediaCodec.getInputBuffers();
+        int inputBufferIndex = mediaCodec.dequeueInputBuffer(100);
         if (inputBufferIndex >= 0) {
             ByteBuffer inputBuffer = inputBuffers[inputBufferIndex];
             inputBuffer.clear();
             inputBuffer.put(buf, offset, length);
-            mCodec.queueInputBuffer(inputBufferIndex, 0, length, System.currentTimeMillis(), 0);
+            mediaCodec.queueInputBuffer(inputBufferIndex, 0, length, System.currentTimeMillis(), 0);
         } else {
             return;
         }
         MediaCodec.BufferInfo bufferInfo = new MediaCodec.BufferInfo();
-        int outputBufferIndex = mCodec.dequeueOutputBuffer(bufferInfo, 100);
+        int outputBufferIndex = mediaCodec.dequeueOutputBuffer(bufferInfo, 100);
         while (outputBufferIndex >= 0) {
-            mCodec.releaseOutputBuffer(outputBufferIndex, true);
-            outputBufferIndex = mCodec.dequeueOutputBuffer(bufferInfo, 0);
+            mediaCodec.releaseOutputBuffer(outputBufferIndex, true);
+            outputBufferIndex = mediaCodec.dequeueOutputBuffer(bufferInfo, 0);
         }
     }
 
