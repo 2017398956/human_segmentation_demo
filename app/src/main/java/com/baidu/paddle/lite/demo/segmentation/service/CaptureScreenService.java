@@ -1,5 +1,6 @@
 package com.baidu.paddle.lite.demo.segmentation.service;
 
+import android.app.Activity;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -11,12 +12,12 @@ import android.os.Build;
 import android.os.IBinder;
 
 import com.baidu.paddle.lite.demo.segmentation.activity.GetScreenActivity;
+import com.baidu.paddle.lite.demo.segmentation.util.ScreenCapture;
+import com.baidu.paddle.lite.demo.segmentation.util.ScreenCaptureHelper;
 
 public class CaptureScreenService extends Service {
 
     public final static String CAPTURE_SCREEN_DATA = "captureScreenData";
-    public final static String CAPTURE_SCREEN_WIDTH = "captureScreenWidth";
-    public final static String CAPTURE_SCREEN_HEIGHT = "captureScreenHeight";
 
     @Override
     public IBinder onBind(Intent intent) {
@@ -28,7 +29,7 @@ public class CaptureScreenService extends Service {
         createNotificationChannel();
         Intent captureData = intent.getParcelableExtra(CAPTURE_SCREEN_DATA);
         if (captureData != null) {
-            // TODO:
+            ScreenCaptureHelper.getInstance().startCapture(Activity.RESULT_OK , captureData);
         }
         return super.onStartCommand(intent, flags, startId);
     }

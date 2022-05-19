@@ -1,5 +1,6 @@
 package com.baidu.paddle.lite.demo.segmentation.util;
 
+import android.media.MediaFormat;
 import android.util.Log;
 
 import java.io.File;
@@ -23,17 +24,14 @@ public class AVCFileReader extends Thread {
     private AVCFileReader(){}
 
     public AVCFileReader(String videoPath , AVCDecoder decoder){
-        this(videoPath , decoder , 0);
-    }
-
-    public AVCFileReader(String videoPath , AVCDecoder decoder , int fps){
+        try {
+            fps = decoder.getMediaFormat().getInteger(MediaFormat.KEY_FRAME_RATE) ;
+        }catch (Exception e){
+        }
         this.path = videoPath ;
         this.mDecoder = decoder ;
         if (null != playListener){
             playListener.onReady();
-        }
-        if (fps > 0){
-            this.fps = fps ;
         }
     }
 

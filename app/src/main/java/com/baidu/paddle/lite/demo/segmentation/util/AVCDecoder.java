@@ -45,6 +45,25 @@ public class AVCDecoder {
         initDecoder();
     }
 
+    public static AVCDecoder createFromScreenCaptureHelper(ScreenCaptureHelper screenCaptureHelper, SurfaceView surfaceView) {
+        String mediaFormatType = MediaFormat.MIMETYPE_VIDEO_AVC;
+        if (screenCaptureHelper.getScreenCapture() != null) {
+            mediaFormatType = screenCaptureHelper.getScreenCapture().getMediaFormatType();
+        }
+        MediaFormat mediaFormat = ScreenCapture.getDefaultMediaFormat(
+                screenCaptureHelper.getWidth(),
+                screenCaptureHelper.getHeight()
+        );
+        if (screenCaptureHelper.getScreenCapture().getMediaFormat() == null) {
+            mediaFormat = screenCaptureHelper.getScreenCapture().getMediaFormat();
+        }
+        return new AVCDecoder(surfaceView, mediaFormatType, screenCaptureHelper.getWidth(), screenCaptureHelper.getHeight(), mediaFormat);
+    }
+
+    public MediaFormat getMediaFormat() {
+        return mediaFormat;
+    }
+
     private void initDecoder() {
         try {
             mediaCodec = MediaCodec.createDecoderByType(mediaFormatType);
@@ -135,11 +154,13 @@ public class AVCDecoder {
                 mediaCodec.start();
             }
         }else {
-            // 视频帧
-            if (!"1".equals(imageView.getTag())){
-                // TODO h264 需要先转换成 YUV
-                // imageView.setImageBitmap(YUVTools.nv12ToBitmap(buf , width , height));
-                imageView.setTag("1");
+            if (imageView != null){
+                // 视频帧
+                if (!"1".equals(imageView.getTag())){
+                    // TODO h264 需要先转换成 YUV
+                    // imageView.setImageBitmap(YUVTools.nv12ToBitmap(buf , width , height));
+                    imageView.setTag("1");
+                }
             }
         }
 
