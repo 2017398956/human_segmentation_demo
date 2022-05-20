@@ -35,6 +35,7 @@ public class ScreenCapture {
 
     private int width, height;
     private SurfaceType surfaceType = SurfaceType.MEDIA_RECORDER;
+    private MediaRecorder mediaRecorder = null;
     private MediaCodec mediaCodec;
     private MediaFormat mediaFormat ;
     private MediaProjection mediaProjection;
@@ -43,6 +44,11 @@ public class ScreenCapture {
     private VirtualDisplay mVirtualDisplay;
 
     enum SurfaceType {
+        /**
+         * MEDIA_CODEC : 会生成自定义格式的 h264 ，当然也可以把自定义格式去掉
+         * IMAGE_READER : 目前只是展示图像的处理功能
+         * MEDIA_RECORDER : 将屏幕共享流录制成 mp4 的格式
+         */
         MEDIA_CODEC, IMAGE_READER, MEDIA_RECORDER
     }
 
@@ -102,8 +108,6 @@ public class ScreenCapture {
     }
 
     private void initEncoder() {
-
-        MediaRecorder mediaRecorder = null;
         switch (surfaceType) {
             case MEDIA_CODEC:
                 try {
@@ -114,7 +118,8 @@ public class ScreenCapture {
                     throw new RuntimeException("不支持 " + mediaFormat.getString(MediaFormat.KEY_MIME) + " 格式");
                 }
                 boolean renderOnSurfaceView = false ;
-                mediaCodec.configure(mediaFormat, renderOnSurfaceView ? videoSurface : null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
+                mediaCodec.configure(mediaFormat, renderOnSurfaceView ? videoSurface : null, null,
+                        MediaCodec.CONFIGURE_FLAG_ENCODE);
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                     // mediaCodec.setOutputSurface(videoSurface);
                 }
@@ -157,7 +162,7 @@ public class ScreenCapture {
         mediaRecorder.setVideoSource(MediaRecorder.VideoSource.SURFACE);
         mediaRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
         mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
-        mediaRecorder.setOutputFile("sdcard/mc_video.mp4");
+        mediaRecorder.setOutputFile(ScreenCaptureHelper.getInstance().getOutputFilePath());
         mediaRecorder.setVideoEncoder(MediaRecorder.VideoEncoder.H264);
         mediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
         mediaRecorder.setVideoSize(width, height);
@@ -316,6 +321,11 @@ public class ScreenCapture {
             mediaCodec.release();
 //            mediaCodec.stop();
             mediaCodec = null;
+        }
+        if (mediaRecorder != null){
+            mediaRecorder.release();
+//            mediaRecorder.stop();
+            mediaRecorder = null ;
         }
     }
 

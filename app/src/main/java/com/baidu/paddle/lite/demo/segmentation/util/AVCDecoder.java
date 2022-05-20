@@ -54,10 +54,12 @@ public class AVCDecoder {
                 screenCaptureHelper.getWidth(),
                 screenCaptureHelper.getHeight()
         );
-        if (screenCaptureHelper.getScreenCapture().getMediaFormat() == null) {
+        if (screenCaptureHelper.getScreenCapture() != null &&
+                screenCaptureHelper.getScreenCapture().getMediaFormat() == null) {
             mediaFormat = screenCaptureHelper.getScreenCapture().getMediaFormat();
         }
-        return new AVCDecoder(surfaceView, mediaFormatType, screenCaptureHelper.getWidth(), screenCaptureHelper.getHeight(), mediaFormat);
+        return new AVCDecoder(surfaceView, mediaFormatType, screenCaptureHelper.getWidth(),
+                screenCaptureHelper.getHeight(), mediaFormat);
     }
 
     public MediaFormat getMediaFormat() {

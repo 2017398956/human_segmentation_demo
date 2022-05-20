@@ -1,13 +1,14 @@
 package com.baidu.paddle.lite.demo.segmentation.activity
 
+import android.Manifest
 import android.content.Intent
 import android.media.Image
-import android.media.MediaFormat
 import android.media.MediaPlayer
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
+import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import cc.rome753.yuvtools.ImageBytes
 import cc.rome753.yuvtools.YUVTools
@@ -18,6 +19,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import java.io.File
+import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.OutputStream
 
@@ -36,12 +38,20 @@ class GetScreenActivity : AppCompatActivity() {
     private lateinit var binding: ActivityGetScreenBinding
     private var captureScreenService: Intent? = null
 
+    @RequiresApi(Build.VERSION_CODES.M)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityGetScreenBinding.inflate(layoutInflater)
         setContentView(binding!!.root)
         initData()
         setListeners()
+        requestPermissions(
+            arrayOf(
+                Manifest.permission.RECORD_AUDIO,
+                Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                Manifest.permission.READ_EXTERNAL_STORAGE
+            ), 1001
+        )
     }
 
     private fun initData() {
@@ -73,7 +83,7 @@ class GetScreenActivity : AppCompatActivity() {
                     Toast.makeText(this@GetScreenActivity, "请先录制", Toast.LENGTH_SHORT).show()
                     return@setOnClickListener
                 }
-                val useMediaPlayer = false
+                val useMediaPlayer = true
                 if (useMediaPlayer){
                     play()
                 }else {
@@ -104,18 +114,23 @@ class GetScreenActivity : AppCompatActivity() {
         }
     }
 
-    private fun play(){
+    private fun play() {
         val mediaPlayer = MediaPlayer();
-        val playAssetVideo = false
-        if (playAssetVideo){
-            val afd = assets.openFd("test.mp4")
-            mediaPlayer.setDataSource(afd.fileDescriptor , afd.startOffset , afd.length)
-        }else{
-//            val videoFile = File(videoPath)
-//            val inputStream = FileInputStream(videoFile)
-//            mediaPlayer.setDataSource(inputStream.fd , 0 , videoFile.length())
-            val afd = assets.openFd("mc_video.h264")
-            mediaPlayer.setDataSource(afd.fileDescriptor , afd.startOffset , afd.length)
+        var playType = 0
+        when (playType) {
+            0 -> {
+                val videoFile = File(ScreenCaptureHelper.getInstance().outputFilePath)
+                val inputStream = FileInputStream(videoFile)
+                mediaPlayer.setDataSource(inputStream.fd, 0, videoFile.length())
+            }
+            1 -> {
+                val afd = assets.openFd("test.mp4")
+                mediaPlayer.setDataSource(afd.fileDescriptor, afd.startOffset, afd.length)
+            }
+            2 -> {
+                val afd = assets.openFd("mc_video.h264")
+                mediaPlayer.setDataSource(afd.fileDescriptor, afd.startOffset, afd.length)
+            }
         }
         mediaPlayer.setDisplay(binding!!.sv.holder)
         mediaPlayer.prepareAsync()
