@@ -2,10 +2,15 @@ package com.baidu.paddle.lite.demo.segmentation.util;
 
 import android.content.Context;
 import android.content.Intent;
+import android.media.MediaFormat;
 import android.media.projection.MediaProjection;
 import android.media.projection.MediaProjectionManager;
+import android.os.Build;
+import android.os.Environment;
 import android.util.Log;
 import android.view.Surface;
+
+import java.io.File;
 
 public class ScreenCaptureHelper {
 
@@ -26,6 +31,21 @@ public class ScreenCaptureHelper {
             screenCaptureHelper = new ScreenCaptureHelper() ;
         }
         return screenCaptureHelper ;
+    }
+
+    /**
+     * 用于 {@link com.baidu.paddle.lite.demo.segmentation.util.ScreenCapture.SurfaceType#MEDIA_RECORDER}
+     * 情形下的视频输出目录
+     * @return
+     */
+    public String getOutputFilePath(){
+        File file ;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q){
+            file = new File(context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS) , "mc_video.mp4") ;
+        }else {
+            file = new File("sdcard/mc_video.mp4") ;
+        }
+        return file.getAbsolutePath();
     }
 
     private ScreenCaptureHelper(){}
