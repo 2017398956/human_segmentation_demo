@@ -13,20 +13,23 @@
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"/>
+
     <View
         android:layout_width="match_parent"
-
         android:layout_height="5dp"
         android:background="#22D9DF"/>
+
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1">
+
         <ImageView
             android:id="@+id/iv_display"
             android:visibility="visible"
             android:layout_width="match_parent"
             android:layout_height="match_parent"/>
+
         <Button
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -34,6 +37,7 @@
             app:layout_constraintRight_toRightOf="parent"
             android:text="开始录制"
             android:id="@+id/btn_recordOrStop"/>
+
         <Button
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -41,6 +45,7 @@
             app:layout_constraintLeft_toLeftOf="parent"
             android:text="开始播放"
             android:id="@+id/btn_play"/>
+
     </androidx.constraintlayout.widget.ConstraintLayout>
 
 

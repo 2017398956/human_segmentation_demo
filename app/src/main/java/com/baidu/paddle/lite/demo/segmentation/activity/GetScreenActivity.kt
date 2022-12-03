@@ -2,6 +2,7 @@ package com.baidu.paddle.lite.demo.segmentation.activity
 
 import android.Manifest
 import android.content.Intent
+import android.graphics.Bitmap
 import android.media.Image
 import android.media.MediaPlayer
 import android.os.Build
@@ -147,13 +148,8 @@ class GetScreenActivity : AppCompatActivity() {
         screenCaptureHelper.setOnCaptureVideoCallback(object :
             ScreenCapture.OnCaptureVideoCallback {
             var count = 0
-
             override fun onCaptureVideo(bytes: ByteArray, width: Int, height: Int) {
-//                val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
-//                val bitmap = YUVTools.nv12ToBitmap(bytes, width, height)
-//                binding!!.ivDisplay.setImageBitmap(bitmap)
-
-                Log.i("NFL", "刷新 view")
+                // 这里的数据是 h264 格式的不能把 bytes 直接转换成 bitmap
                 count++
                 /**
                  *  true : h264 格式已被修改，需要用 AVCDecoder 解码播放
@@ -180,16 +176,18 @@ class GetScreenActivity : AppCompatActivity() {
         screenCaptureHelper.setOnImageAvailableListener(object :
             ScreenCapture.OnImageAvailableListener {
             var imageBytes: ImageBytes? = null
+            var bitmap:Bitmap? = null
+            var hasScreenSnapshot = false
             override fun onImage(image: Image?) {
                 if (image == null) return
                 Log.d("NFL", "setOnImageAvailableListener")
                 imageBytes = YUVTools.getBytesFromImage(image)
-                binding?.ivDisplay?.setImageBitmap(
-                    YUVTools.yv12ToBitmap(
-                        imageBytes!!.bytes,
-                        imageBytes!!.width, imageBytes!!.height
-                    )
-                )
+                bitmap = YUVTools.yv12ToBitmap(imageBytes!!.bytes,imageBytes!!.width, imageBytes!!.height)
+                if (!hasScreenSnapshot){
+                    ImageUtil.onlySaveBitmap(this@GetScreenActivity,bitmap,"test_screen_snapshot")
+                    hasScreenSnapshot = true
+                }
+                binding?.ivDisplay?.setImageBitmap(bitmap)
             }
         })
 

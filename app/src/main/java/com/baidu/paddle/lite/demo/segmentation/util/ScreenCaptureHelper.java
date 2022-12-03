@@ -69,10 +69,20 @@ public class ScreenCaptureHelper {
         this.videoSurface = videoSurface;
     }
 
+    /**
+     * 当 {@link ScreenCapture#getSurfaceType()} 为
+     * {@link com.baidu.paddle.lite.demo.segmentation.util.ScreenCapture.SurfaceType#MEDIA_CODEC} 时才有效
+     * @param onCaptureVideoCallback
+     */
     public void setOnCaptureVideoCallback(ScreenCapture.OnCaptureVideoCallback onCaptureVideoCallback) {
         this.onCaptureVideoCallback = onCaptureVideoCallback;
     }
 
+    /**
+     * 当 {@link ScreenCapture#getSurfaceType()} 为
+     * {@link com.baidu.paddle.lite.demo.segmentation.util.ScreenCapture.SurfaceType#IMAGE_READER} 时才有效
+     * @param onImageAvailableListener
+     */
     public void setOnImageAvailableListener(ScreenCapture.OnImageAvailableListener onImageAvailableListener) {
         this.onImageAvailableListener = onImageAvailableListener;
     }

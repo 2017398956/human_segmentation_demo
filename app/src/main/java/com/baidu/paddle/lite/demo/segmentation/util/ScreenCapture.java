@@ -34,7 +34,7 @@ import cc.rome753.yuvtools.YUVTools;
 public class ScreenCapture {
 
     private int width, height;
-    private SurfaceType surfaceType = SurfaceType.MEDIA_RECORDER;
+    private SurfaceType surfaceType = SurfaceType.IMAGE_READER;
     private MediaRecorder mediaRecorder = null;
     private MediaCodec mediaCodec;
     private MediaFormat mediaFormat ;
@@ -43,7 +43,7 @@ public class ScreenCapture {
     private OnImageAvailableListener onImageAvailableListener;
     private VirtualDisplay mVirtualDisplay;
 
-    enum SurfaceType {
+    public enum SurfaceType {
         /**
          * MEDIA_CODEC : 会生成自定义格式的 h264 ，当然也可以把自定义格式去掉
          * IMAGE_READER : 目前只是展示图像的处理功能
@@ -343,6 +343,14 @@ public class ScreenCapture {
 
     public String getMediaFormatType() {
         return mediaFormat.getString(MediaFormat.KEY_MIME);
+    }
+
+    public SurfaceType getSurfaceType() {
+        return surfaceType;
+    }
+
+    public void setSurfaceType(SurfaceType surfaceType) {
+        this.surfaceType = surfaceType;
     }
 
     private boolean isColorFormatSupported(int colorFormat, MediaCodecInfo.CodecCapabilities caps) {
