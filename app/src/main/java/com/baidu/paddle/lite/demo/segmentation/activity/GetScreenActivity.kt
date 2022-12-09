@@ -23,6 +23,7 @@ import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.OutputStream
+import java.nio.ByteBuffer
 
 /**
  * 用于录屏并播放
@@ -32,7 +33,6 @@ class GetScreenActivity : AppCompatActivity() {
     private val REQUEST_CODE_SCREEN_CAPTURE = 1000
     private lateinit var screenCaptureHelper: ScreenCaptureHelper
 
-    private val videoPath = "sdcard/mc_video.h264"
     private var mVideoStream: OutputStream? = null
     private var avcFileReader: AVCFileReader? = null
 
@@ -80,7 +80,7 @@ class GetScreenActivity : AppCompatActivity() {
                     return@setOnClickListener
                 }
                 binding!!.btnPlay.text = "停止播放"
-                if (!File(videoPath).exists()) {
+                if (!File(ScreenCaptureHelper.getInstance().h264OutputFilePath).exists()) {
                     Toast.makeText(this@GetScreenActivity, "请先录制", Toast.LENGTH_SHORT).show()
                     return@setOnClickListener
                 }
@@ -90,7 +90,7 @@ class GetScreenActivity : AppCompatActivity() {
                 }else {
                     val avcDecoder = AVCDecoder.createFromScreenCaptureHelper(screenCaptureHelper , binding.sv)
                     avcDecoder.imageView = binding!!.ivDisplay
-                    avcFileReader = AVCFileReader(videoPath, avcDecoder)
+                    avcFileReader = AVCFileReader(ScreenCaptureHelper.getInstance().h264OutputFilePath, avcDecoder)
                     avcFileReader?.setPlayListener(object : AVCFileReader.PlayListener {
                         override fun onReady() {
 
@@ -179,10 +179,19 @@ class GetScreenActivity : AppCompatActivity() {
             var bitmap:Bitmap? = null
             var hasScreenSnapshot = false
             override fun onImage(image: Image?) {
-                if (image == null) return
+                if (image == null || image.planes == null) return
                 Log.d("NFL", "setOnImageAvailableListener")
-                imageBytes = YUVTools.getBytesFromImage(image)
-                bitmap = YUVTools.yv12ToBitmap(imageBytes!!.bytes,imageBytes!!.width, imageBytes!!.height)
+                bitmap?.let {
+                    it.recycle()
+                }
+                if (image.planes.size == 1){
+                    bitmap = Bitmap.createBitmap(image.width, image.height, Bitmap.Config.ARGB_8888)
+                    bitmap!!.copyPixelsFromBuffer(image.planes[0].buffer)
+                }else{
+                    imageBytes = YUVTools.getBytesFromImage(image)
+                    bitmap = YUVTools.yv12ToBitmap(imageBytes!!.bytes,imageBytes!!.width, imageBytes!!.height)
+                }
+                image.close()
                 if (!hasScreenSnapshot){
                     ImageUtil.onlySaveBitmap(this@GetScreenActivity,bitmap,"test_screen_snapshot")
                     hasScreenSnapshot = true
@@ -203,7 +212,7 @@ class GetScreenActivity : AppCompatActivity() {
 
     private fun writeVideo(bytes: ByteArray) {
         if (mVideoStream == null) {
-            val videoFile = File(videoPath);
+            val videoFile = File(ScreenCaptureHelper.getInstance().h264OutputFilePath);
             if (videoFile.exists()) {
                 videoFile.delete()
             }

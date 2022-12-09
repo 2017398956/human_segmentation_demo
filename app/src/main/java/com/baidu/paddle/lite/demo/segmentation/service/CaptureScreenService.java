@@ -1,5 +1,8 @@
 package com.baidu.paddle.lite.demo.segmentation.service;
 
+import static android.app.PendingIntent.FLAG_IMMUTABLE;
+import static android.app.PendingIntent.FLAG_MUTABLE;
+
 import android.app.Activity;
 import android.app.Notification;
 import android.app.NotificationChannel;
@@ -43,7 +46,7 @@ public class CaptureScreenService extends Service {
     private void createNotificationChannel() {
         Notification.Builder builder = new Notification.Builder(this); //获取一个Notification构造器
         Intent nfIntent = new Intent(this, GetScreenActivity.class); //点击后跳转的界面，可以设置跳转数据
-        builder.setContentIntent(PendingIntent.getActivity(this, 0, nfIntent, 0)) // 设置PendingIntent
+        builder.setContentIntent(PendingIntent.getActivity(this, 0, nfIntent, FLAG_IMMUTABLE)) // 设置PendingIntent
                 //.setLargeIcon(BitmapFactory.decodeResource(getResources(), 0)) // 设置下拉列表中的图标(大图标)
                 //.setContentTitle("SMI InstantView") // 设置下拉列表里的标题
                 //.setSmallIcon(0) // 设置状态栏内的小图标

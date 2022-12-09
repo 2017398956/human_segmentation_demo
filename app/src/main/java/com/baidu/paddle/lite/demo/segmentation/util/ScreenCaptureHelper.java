@@ -40,10 +40,27 @@ public class ScreenCaptureHelper {
      */
     public String getOutputFilePath(){
         File file ;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q){
+        Boolean usePrivateFile = false;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && usePrivateFile){
             file = new File(context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS) , "mc_video.mp4") ;
         }else {
-            file = new File("sdcard/mc_video.mp4") ;
+            file = new File("sdcard/Download/mc_video.mp4") ;
+        }
+        return file.getAbsolutePath();
+    }
+
+    /**
+     * 用于 {@link com.baidu.paddle.lite.demo.segmentation.util.ScreenCapture.SurfaceType#MEDIA_CODEC}
+     * 情形下的视频输出目录
+     * @return
+     */
+    public String getH264OutputFilePath(){
+        File file ;
+        Boolean usePrivateFile = false;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && usePrivateFile){
+            file = new File(context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS) , "mc_video.h264") ;
+        }else {
+            file = new File("sdcard/Download/mc_video.h264") ;
         }
         return file.getAbsolutePath();
     }
