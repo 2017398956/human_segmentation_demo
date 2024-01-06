@@ -26,6 +26,7 @@ import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.OutputStream
+import java.nio.ByteBuffer
 
 /**
  * 用于录屏并播放
@@ -35,7 +36,6 @@ class GetScreenActivity : AppCompatActivity() {
     private val REQUEST_CODE_SCREEN_CAPTURE = 1000
     private lateinit var screenCaptureHelper: ScreenCaptureHelper
 
-    private val videoPath = "sdcard/mc_video.h264"
     private var mVideoStream: OutputStream? = null
     private var avcFileReader: AVCFileReader? = null
 
@@ -87,20 +87,20 @@ class GetScreenActivity : AppCompatActivity() {
                 }
                 binding.btnPlay.text = stopPlayStr
                 when (ScreenCaptureHelper.getInstance().screenCapture.surfaceType) {
-                    ScreenCapture.SurfaceType.MEDIA_RECORDER -> {
+                    SurfaceType.MEDIA_RECORDER -> {
                         if (!File(ScreenCaptureHelper.getInstance().recorderMp4VideoPath).exists()) {
                             ToastUtil.showToast("请先录制")
                             return@setOnClickListener
                         }
                     }
 
-                    ScreenCapture.SurfaceType.IMAGE_READER -> {
+                    SurfaceType.IMAGE_READER -> {
                         ToastUtil.showToast("图片集不需要播放")
                         return@setOnClickListener
                     }
 
-                    ScreenCapture.SurfaceType.MEDIA_CODEC -> {
-                        if (!File(videoPath).exists()) {
+                    SurfaceType.MEDIA_CODEC -> {
+                        if (!File(ScreenCaptureHelper.getInstance().h264OutputFilePath).exists()) {
                             ToastUtil.showToast("请先录制")
                             return@setOnClickListener
                         }
@@ -118,7 +118,6 @@ class GetScreenActivity : AppCompatActivity() {
                     val avcDecoder =
                         AVCDecoder.createFromScreenCaptureHelper(screenCaptureHelper, binding.sv)
                     avcDecoder.imageView = binding.ivDisplay
-                    avcFileReader = AVCFileReader(videoPath, avcDecoder)
                     avcFileReader?.setPlayListener(object : AVCFileReader.PlayListener {
                         override fun onReady() {
 
@@ -161,7 +160,7 @@ class GetScreenActivity : AppCompatActivity() {
             SurfaceType.MEDIA_CODEC -> {
                 if (addFrameLengthMarkWhenUseMediaCodec) {
                     val avcFileReader = AVCFileReader(
-                        videoPath,
+                        ScreenCaptureHelper.getInstance().h264OutputFilePath,
                         AVCDecoder.createFromScreenCaptureHelper(screenCaptureHelper, binding.sv)
                     )
                     avcFileReader.setPlayListener(object : PlayListener {
@@ -184,7 +183,7 @@ class GetScreenActivity : AppCompatActivity() {
                 } else {
                     // val afd = assets.openFd("mc_video.h264")
                     // mediaPlayer.setDataSource(afd.fileDescriptor, afd.startOffset, afd.length)
-                    mediaPlayer.setDataSource(videoPath)
+                    mediaPlayer.setDataSource(ScreenCaptureHelper.getInstance().h264OutputFilePath)
                 }
             }
         }
@@ -227,7 +226,7 @@ class GetScreenActivity : AppCompatActivity() {
             var bitmap: Bitmap? = null
             var hasScreenSnapshot = false
             override fun onImage(image: Image?) {
-                if (image == null) return
+                if (image == null || image.planes == null) return
                 Log.d("NFL", "onImage:0x" + image.format.toString(16))
                 imageBytes = YUVTools.getBytesFromImage(image)
                 when (image.format) {
@@ -260,7 +259,7 @@ class GetScreenActivity : AppCompatActivity() {
 
     private fun writeVideo(bytes: ByteArray) {
         if (mVideoStream == null) {
-            val videoFile = File(videoPath);
+            val videoFile = File(ScreenCaptureHelper.getInstance().h264OutputFilePath);
             if (videoFile.exists()) {
                 videoFile.delete()
             }
