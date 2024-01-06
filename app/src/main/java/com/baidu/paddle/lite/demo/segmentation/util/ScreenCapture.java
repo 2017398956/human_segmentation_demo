@@ -14,7 +14,6 @@ import android.os.Build;
 import android.os.Handler;
 import android.util.Log;
 import android.view.Surface;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 
@@ -33,8 +32,9 @@ import cc.rome753.yuvtools.YUVTools;
  */
 public class ScreenCapture {
 
+    private static final String TAG = "ScreenCapture";
     private int width, height;
-    private SurfaceType surfaceType = SurfaceType.IMAGE_READER;
+    private SurfaceType surfaceType = SurfaceType.MEDIA_CODEC;
     private MediaRecorder mediaRecorder = null;
     private MediaCodec mediaCodec;
     private MediaFormat mediaFormat ;
@@ -45,9 +45,9 @@ public class ScreenCapture {
 
     public enum SurfaceType {
         /**
-         * MEDIA_CODEC : 会生成自定义格式的 h264 ，当然也可以把自定义格式去掉
-         * IMAGE_READER : 目前只是展示图像的处理功能
-         * MEDIA_RECORDER : 将屏幕共享流录制成 mp4 的格式
+         * MEDIA_CODEC : 会生成自定义格式的 h264 ，当然也可以把自定义格式去掉，对应 onCaptureVideoCallback
+         * IMAGE_READER : 目前只是展示图像的处理功能，对应 onImageAvailableListener
+         * MEDIA_RECORDER : 将屏幕共享流录制成 mp4 的格式，系统提供的方法不需要额外处理
          */
         MEDIA_CODEC, IMAGE_READER, MEDIA_RECORDER
     }
@@ -111,6 +111,7 @@ public class ScreenCapture {
         switch (surfaceType) {
             case MEDIA_CODEC:
                 try {
+                    Log.d(TAG, "选则的 mime 类型为：" + mediaFormat.getString(MediaFormat.KEY_MIME));
                     mediaCodec = MediaCodec.createEncoderByType(mediaFormat.getString(MediaFormat.KEY_MIME));
                 } catch (IOException e) {
                     Log.e("NFL" , e.getLocalizedMessage()) ;
@@ -162,7 +163,7 @@ public class ScreenCapture {
         mediaRecorder.setVideoSource(MediaRecorder.VideoSource.SURFACE);
         mediaRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
         mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
-        mediaRecorder.setOutputFile(ScreenCaptureHelper.getInstance().getOutputFilePath());
+        mediaRecorder.setOutputFile(ScreenCaptureHelper.getInstance().getRecorderMp4VideoPath());
         mediaRecorder.setVideoEncoder(MediaRecorder.VideoEncoder.H264);
         mediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
         mediaRecorder.setVideoSize(width, height);
@@ -185,8 +186,9 @@ public class ScreenCapture {
             mediaCodec.setCallback(new MediaCodec.Callback() {
                 @Override
                 public void onInputBufferAvailable(@NonNull MediaCodec codec, int index) {
-                    Log.i("NFL", "onInputBufferAvailable");
+                    Log.i(TAG, "onInputBufferAvailable");
                     Image image = codec.getInputImage(index);
+                    Log.d(TAG, "onInputBufferAvailable image:" + image + " and index:" + index);
                     if (null != image) {
                         ImageBytes imageBytes = YUVTools.getBytesFromImage(image);
                         Log.i("NFL", imageBytes.width + ":" + imageBytes.height);
@@ -198,9 +200,10 @@ public class ScreenCapture {
                     // 这里运行在主线程
                     //Log.i(TAG,"onOutputBufferAvailable");
                     MediaFormat format = codec.getOutputFormat();
+                    // 这里的 image2 总是 null
                     Image image2 = codec.getOutputImage(index) ;
-                    Log.i("NFL", "MediaCodec:" + Thread.currentThread().getName());
-                    Log.i("NFL", "这帧的大小：" + info.size);
+                    Log.d(TAG, "onOutputBufferAvailable image2:" + image2 + " and index:" + index);
+                    Log.i(TAG, "这帧的大小：" + info.size);
                     if (false) {
                         codec.releaseOutputBuffer(index, true);
                         return;
@@ -238,12 +241,12 @@ public class ScreenCapture {
 
                 @Override
                 public void onError(@NonNull MediaCodec codec, @NonNull MediaCodec.CodecException e) {
-                    Log.i("NFL", "onError");
+                    Log.e(TAG, "MediaCodec error:" + e.getLocalizedMessage());
                 }
 
                 @Override
                 public void onOutputFormatChanged(@NonNull MediaCodec codec, @NonNull MediaFormat format) {
-                    Log.i("NFL", "onOutputFormatChanged");
+                    Log.i(TAG, "MediaCodec onOutputFormatChanged to:" + format);
                 }
             });
             mediaCodec.start();
@@ -255,29 +258,26 @@ public class ScreenCapture {
      * Android5.0之后同步获取
      */
     private void encodeSync() {
-        mCaptureThread = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                mediaCodec.start();
-                MediaCodec.BufferInfo bufferInfo = new MediaCodec.BufferInfo();
-                while (isCapturing && mediaCodec != null) {
-                    try {
-                        int index = mediaCodec.dequeueOutputBuffer(bufferInfo, 0);
-                        if (index >= 0) {
-                            // Log.i(TAG, "dequeueOutputBuffer " + outId);
-                            ByteBuffer buffer = mediaCodec.getOutputBuffer(index);
-                            byte[] bytes = new byte[bufferInfo.size];
-                            buffer.get(bytes);
-                            if (null != onCaptureVideoCallback) {
-                                onCaptureVideoCallback.onCaptureVideo(bytes, width, height);
-                            } else {
-                                Log.w("NFL", "不应该出现！");
-                            }
-                            mediaCodec.releaseOutputBuffer(index, false);
+        mCaptureThread = new Thread(() -> {
+            mediaCodec.start();
+            MediaCodec.BufferInfo bufferInfo = new MediaCodec.BufferInfo();
+            while (isCapturing && mediaCodec != null) {
+                try {
+                    int index = mediaCodec.dequeueOutputBuffer(bufferInfo, 0);
+                    if (index >= 0) {
+                        // Log.i(TAG, "dequeueOutputBuffer " + outId);
+                        ByteBuffer buffer = mediaCodec.getOutputBuffer(index);
+                        byte[] bytes = new byte[bufferInfo.size];
+                        buffer.get(bytes);
+                        if (null != onCaptureVideoCallback) {
+                            onCaptureVideoCallback.onCaptureVideo(bytes, width, height);
+                        } else {
+                            Log.w("NFL", "不应该出现！");
                         }
-                    } catch (Exception e) {
-                        Log.w("NFL", e);
+                        mediaCodec.releaseOutputBuffer(index, false);
                     }
+                } catch (Exception e) {
+                    Log.w("NFL", e);
                 }
             }
         });

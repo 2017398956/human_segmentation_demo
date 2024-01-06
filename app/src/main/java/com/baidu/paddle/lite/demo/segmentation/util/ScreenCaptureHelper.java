@@ -2,7 +2,6 @@ package com.baidu.paddle.lite.demo.segmentation.util;
 
 import android.content.Context;
 import android.content.Intent;
-import android.media.MediaFormat;
 import android.media.projection.MediaProjection;
 import android.media.projection.MediaProjectionManager;
 import android.os.Build;
@@ -38,7 +37,7 @@ public class ScreenCaptureHelper {
      * 情形下的视频输出目录
      * @return
      */
-    public String getOutputFilePath(){
+    public String getRecorderMp4VideoPath(){
         File file ;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q){
             file = new File(context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS) , "mc_video.mp4") ;

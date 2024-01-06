@@ -68,9 +68,8 @@ public class AVCFileReader extends Thread {
                         try {
                             // 由于每帧数据读取完毕立即丢给解码器显示，没有时间戳（PTS、DTS）控制解码显示
                             // 这里通过sleep做个简单的显示控制 1000/60 ≈ 16
-                            Thread.sleep(1000l / fps);
+                            Thread.sleep(1000L / fps);
                         } catch (Exception e) {
-                            Log.w(TAG, e);
                         }
                     } else {
                         //文件读取结束
@@ -95,7 +94,7 @@ public class AVCFileReader extends Thread {
         mDecoder.stop();
     }
 
-    private String TAG = getClass().getSimpleName();
+    private static final String TAG = "AVCFileReader";
 
     /**
      * 将帧内容交给解析器解析

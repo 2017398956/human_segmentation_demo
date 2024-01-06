@@ -3,6 +3,7 @@ package com.baidu.paddle.lite.demo.segmentation.activity
 import android.Manifest
 import android.content.Intent
 import android.graphics.Bitmap
+import android.graphics.ImageFormat
 import android.media.Image
 import android.media.MediaPlayer
 import android.os.Build
@@ -11,13 +12,15 @@ import android.util.Log
 import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
 import cc.rome753.yuvtools.ImageBytes
 import cc.rome753.yuvtools.YUVTools
 import com.baidu.paddle.lite.demo.segmentation.databinding.ActivityGetScreenBinding
 import com.baidu.paddle.lite.demo.segmentation.service.CaptureScreenService
 import com.baidu.paddle.lite.demo.segmentation.util.*
+import com.baidu.paddle.lite.demo.segmentation.util.AVCFileReader.PlayListener
+import com.baidu.paddle.lite.demo.segmentation.util.ScreenCapture.SurfaceType
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import java.io.File
 import java.io.FileInputStream
@@ -36,14 +39,13 @@ class GetScreenActivity : AppCompatActivity() {
     private var mVideoStream: OutputStream? = null
     private var avcFileReader: AVCFileReader? = null
 
-    private lateinit var binding: ActivityGetScreenBinding
+    private val binding by inflate<ActivityGetScreenBinding>()
     private var captureScreenService: Intent? = null
 
     @RequiresApi(Build.VERSION_CODES.M)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        binding = ActivityGetScreenBinding.inflate(layoutInflater)
-        setContentView(binding!!.root)
+        setContentView(binding.root)
         initData()
         setListeners()
         requestPermissions(
@@ -63,8 +65,8 @@ class GetScreenActivity : AppCompatActivity() {
     }
 
     private fun setListeners() {
-        binding?.btnRecordOrStop!!.setOnClickListener {
-            if ("开始录制" == binding!!.btnRecordOrStop.text) {
+        binding.btnRecordOrStop.setOnClickListener {
+            if (startRecordStr == binding.btnRecordOrStop.text) {
                 startActivityForResult(
                     screenCaptureHelper.mediaProjectionManager.createScreenCaptureIntent(),
                     REQUEST_CODE_SCREEN_CAPTURE
@@ -73,23 +75,49 @@ class GetScreenActivity : AppCompatActivity() {
                 stopWriteVideo()
             }
         }
-        binding!!.btnPlay.setOnClickListener {
-            if (binding!!.btnPlay.text == "开始播放") {
-                if ("停止录制" == binding!!.btnRecordOrStop.text) {
-                    Toast.makeText(this@GetScreenActivity , "录制中，请结束录制后播放" , Toast.LENGTH_SHORT).show()
+        binding.btnPlay.setOnClickListener {
+            if (binding.btnPlay.text == startPlayStr) {
+                if (stopRecordStr == binding.btnRecordOrStop.text) {
+                    ToastUtil.showToast("录制中，请结束录制后播放")
                     return@setOnClickListener
                 }
-                binding!!.btnPlay.text = "停止播放"
-                if (!File(videoPath).exists()) {
-                    Toast.makeText(this@GetScreenActivity, "请先录制", Toast.LENGTH_SHORT).show()
+                if (ScreenCaptureHelper.getInstance().screenCapture == null) {
+                    ToastUtil.showToast("请先录制")
                     return@setOnClickListener
                 }
+                binding.btnPlay.text = stopPlayStr
+                when (ScreenCaptureHelper.getInstance().screenCapture.surfaceType) {
+                    ScreenCapture.SurfaceType.MEDIA_RECORDER -> {
+                        if (!File(ScreenCaptureHelper.getInstance().recorderMp4VideoPath).exists()) {
+                            ToastUtil.showToast("请先录制")
+                            return@setOnClickListener
+                        }
+                    }
+
+                    ScreenCapture.SurfaceType.IMAGE_READER -> {
+                        ToastUtil.showToast("图片集不需要播放")
+                        return@setOnClickListener
+                    }
+
+                    ScreenCapture.SurfaceType.MEDIA_CODEC -> {
+                        if (!File(videoPath).exists()) {
+                            ToastUtil.showToast("请先录制")
+                            return@setOnClickListener
+                        }
+                    }
+
+                    else -> {
+
+                    }
+                }
+
                 val useMediaPlayer = true
-                if (useMediaPlayer){
-                    play()
-                }else {
-                    val avcDecoder = AVCDecoder.createFromScreenCaptureHelper(screenCaptureHelper , binding.sv)
-                    avcDecoder.imageView = binding!!.ivDisplay
+                if (useMediaPlayer) {
+                    play(ScreenCaptureHelper.getInstance().screenCapture.surfaceType)
+                } else {
+                    val avcDecoder =
+                        AVCDecoder.createFromScreenCaptureHelper(screenCaptureHelper, binding.sv)
+                    avcDecoder.imageView = binding.ivDisplay
                     avcFileReader = AVCFileReader(videoPath, avcDecoder)
                     avcFileReader?.setPlayListener(object : AVCFileReader.PlayListener {
                         override fun onReady() {
@@ -100,40 +128,67 @@ class GetScreenActivity : AppCompatActivity() {
                         }
 
                         override fun onFinished() {
-                            GlobalScope.launch(Dispatchers.Main) {
-                                binding!!.btnPlay.text = "开始播放"
+                            lifecycleScope.launch(Dispatchers.Main) {
+                                binding.btnPlay.text = startPlayStr
                             }
                         }
 
                     })
                     avcFileReader?.start()
                 }
-            }else{
-                binding!!.btnPlay.text = "开始播放"
+            } else {
+                binding.btnPlay.text = startPlayStr
                 avcFileReader?.stopPlay()
             }
         }
     }
 
-    private fun play() {
+    private fun play(surfaceType: SurfaceType) {
         val mediaPlayer = MediaPlayer();
-        var playType = 0
-        when (playType) {
-            0 -> {
-                val videoFile = File(ScreenCaptureHelper.getInstance().outputFilePath)
+        when (surfaceType) {
+            SurfaceType.IMAGE_READER -> {
+                val videoFile = File(ScreenCaptureHelper.getInstance().recorderMp4VideoPath)
                 val inputStream = FileInputStream(videoFile)
                 mediaPlayer.setDataSource(inputStream.fd, 0, videoFile.length())
             }
-            1 -> {
-                val afd = assets.openFd("test.mp4")
-                mediaPlayer.setDataSource(afd.fileDescriptor, afd.startOffset, afd.length)
+
+            SurfaceType.MEDIA_RECORDER -> {
+                // val afd = assets.openFd("test.mp4")
+                // mediaPlayer.setDataSource(afd.fileDescriptor, afd.startOffset, afd.length)
+                mediaPlayer.setDataSource(ScreenCaptureHelper.getInstance().recorderMp4VideoPath)
             }
-            2 -> {
-                val afd = assets.openFd("mc_video.h264")
-                mediaPlayer.setDataSource(afd.fileDescriptor, afd.startOffset, afd.length)
+
+            SurfaceType.MEDIA_CODEC -> {
+                if (addFrameLengthMarkWhenUseMediaCodec) {
+                    val avcFileReader = AVCFileReader(
+                        videoPath,
+                        AVCDecoder.createFromScreenCaptureHelper(screenCaptureHelper, binding.sv)
+                    )
+                    avcFileReader.setPlayListener(object : PlayListener {
+                        override fun onReady() {
+
+                        }
+
+                        override fun onPlaying() {
+                        }
+
+                        override fun onFinished() {
+                            lifecycleScope.launch {
+                                binding.btnPlay.text = startPlayStr
+                            }
+                        }
+
+                    })
+                    avcFileReader.start();
+                    return
+                } else {
+                    // val afd = assets.openFd("mc_video.h264")
+                    // mediaPlayer.setDataSource(afd.fileDescriptor, afd.startOffset, afd.length)
+                    mediaPlayer.setDataSource(videoPath)
+                }
             }
         }
-        mediaPlayer.setDisplay(binding!!.sv.holder)
+        mediaPlayer.setDisplay(binding.sv.holder)
         mediaPlayer.prepareAsync()
         mediaPlayer.setOnPreparedListener {
             it.start()
@@ -151,14 +206,9 @@ class GetScreenActivity : AppCompatActivity() {
             override fun onCaptureVideo(bytes: ByteArray, width: Int, height: Int) {
                 // 这里的数据是 h264 格式的不能把 bytes 直接转换成 bitmap
                 count++
-                /**
-                 *  true : h264 格式已被修改，需要用 AVCDecoder 解码播放
-                 *  false :  h264 视频文件
-                 */
-                val addFrameLengthMark = true
                 var newBytes: ByteArray? = null
-                if (addFrameLengthMark) {
-                    // 帧数据前面都插入了4个字节记录当前帧的长度
+                if (addFrameLengthMarkWhenUseMediaCodec) {
+                    // 帧数据前面都插入了 4 个字节记录当前帧的长度
                     newBytes = ByteArray(bytes.size + AVCFileReader.FRAME_LENGTH)
                     val head: ByteArray = CodecUtils.intToBytes(bytes.size)
                     System.arraycopy(head, 0, newBytes, 0, AVCFileReader.FRAME_LENGTH)
@@ -167,27 +217,34 @@ class GetScreenActivity : AppCompatActivity() {
                     newBytes = ByteArray(bytes.size)
                     System.arraycopy(bytes, 0, newBytes, 0, bytes.size)
                 }
-                if (newBytes != null) {
-                    Log.i("NFL", "校验帧的大小：" + (newBytes.size - AVCFileReader.FRAME_LENGTH))
-                    writeVideo(newBytes)
-                }
+                Log.i("NFL", "校验帧的大小：" + (newBytes.size - AVCFileReader.FRAME_LENGTH))
+                writeVideo(newBytes)
             }
         })
         screenCaptureHelper.setOnImageAvailableListener(object :
             ScreenCapture.OnImageAvailableListener {
             var imageBytes: ImageBytes? = null
-            var bitmap:Bitmap? = null
+            var bitmap: Bitmap? = null
             var hasScreenSnapshot = false
             override fun onImage(image: Image?) {
                 if (image == null) return
-                Log.d("NFL", "setOnImageAvailableListener")
+                Log.d("NFL", "onImage:0x" + image.format.toString(16))
                 imageBytes = YUVTools.getBytesFromImage(image)
-                bitmap = YUVTools.yv12ToBitmap(imageBytes!!.bytes,imageBytes!!.width, imageBytes!!.height)
-                if (!hasScreenSnapshot){
-                    ImageUtil.onlySaveBitmap(this@GetScreenActivity,bitmap,"test_screen_snapshot")
+                when (image.format) {
+                    ImageFormat.YUV_420_888 -> {
+                        bitmap = YUVTools.i420ToBitmap(
+                            imageBytes!!.bytes,
+                            imageBytes!!.width,
+                            imageBytes!!.height
+                        )
+                    }
+                }
+
+                if (!hasScreenSnapshot) {
+                    ImageUtil.onlySaveBitmap(this@GetScreenActivity, bitmap, "test_screen_snapshot")
                     hasScreenSnapshot = true
                 }
-                binding?.ivDisplay?.setImageBitmap(bitmap)
+                binding.ivDisplay.setImageBitmap(bitmap)
             }
         })
 
@@ -198,7 +255,7 @@ class GetScreenActivity : AppCompatActivity() {
         } else {
             screenCaptureHelper.startCapture(resultCode, data!!)
         }
-        binding!!.btnRecordOrStop.text = "停止录制"
+        binding.btnRecordOrStop.text = stopRecordStr
     }
 
     private fun writeVideo(bytes: ByteArray) {
@@ -211,14 +268,14 @@ class GetScreenActivity : AppCompatActivity() {
                 videoFile.createNewFile();
                 mVideoStream = FileOutputStream(videoFile);
             } catch (e: Exception) {
-                Log.e("NFL", e.toString())
+                Log.e(TAG, "writeVideo() failed: ${e.localizedMessage}")
             }
         }
         try {
             mVideoStream?.write(bytes);
             mVideoStream?.flush();
         } catch (e: Exception) {
-            Log.e("NFL", e.toString())
+            Log.e(TAG, "writeVideo() failed: ${e.localizedMessage}")
         }
     }
 
@@ -227,10 +284,25 @@ class GetScreenActivity : AppCompatActivity() {
         try {
             mVideoStream?.close()
         } catch (e: Exception) {
-            Log.e("NFL", e.toString())
+            Log.e(TAG, "stopWriteVideo() failed: ${e.localizedMessage}")
         }
         mVideoStream = null
-        binding?.btnRecordOrStop?.text = "开始录制"
+        binding.btnRecordOrStop.text = startRecordStr
+    }
+
+    companion object {
+        const val TAG = "GetScreenActivity"
+        const val startRecordStr = "开始录制"
+        const val startPlayStr = "开始播放"
+        const val stopRecordStr = "停止录制"
+        const val stopPlayStr = "停止播放"
+
+        /**
+         *  true : h264 格式已被修改，需要用
+         *  @see AVCFileReader 解码播放
+         *  false :  h264 视频文件，可以由专门的 h264 播放器播放
+         */
+        const val addFrameLengthMarkWhenUseMediaCodec = true
     }
 
 }

@@ -15,7 +15,8 @@ import java.nio.ByteBuffer;
 import java.util.LinkedList;
 
 public class AVCDecoder {
-    private String TAG = "AVCDecoder";
+    private static final String TAG = "AVCDecoder";
+    private boolean decodeStop;
     private MediaCodec mediaCodec;
     private MediaFormat mediaFormat;
     private String mediaFormatType;
@@ -100,21 +101,18 @@ public class AVCDecoder {
     }
 
     private void queueInputBuffer() {
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                while (true) {
-                    if (mFrameList.isEmpty() || mInputIndexList.isEmpty()) {
-                        continue;
-                    }
-                    VideoFrame frame = mFrameList.poll();
-                    Integer index = mInputIndexList.poll();
-                    ByteBuffer inputBuffer = mediaCodec.getInputBuffer(index);
-                    inputBuffer.clear();
-                    inputBuffer.put(frame.buf, frame.offset, frame.length);
-                    Log.d("NFL", "prepare for AVCDecoder's inputBuffer:" + index);
-                    mediaCodec.queueInputBuffer(index, 0, frame.length - frame.offset, 0, 0);
+        new Thread(() -> {
+            while (!decodeStop) {
+                if (mFrameList.isEmpty() || mInputIndexList.isEmpty()) {
+                    continue;
                 }
+                VideoFrame frame = mFrameList.poll();
+                Integer index = mInputIndexList.poll();
+                ByteBuffer inputBuffer = mediaCodec.getInputBuffer(index);
+                inputBuffer.clear();
+                inputBuffer.put(frame.buf, frame.offset, frame.length);
+                Log.d(TAG, "prepare for AVCDecoder's inputBuffer:" + index);
+                mediaCodec.queueInputBuffer(index, 0, frame.length - frame.offset, 0, 0);
             }
         }).start();
     }
@@ -180,6 +178,7 @@ public class AVCDecoder {
     }
 
     public void stop() {
+        decodeStop = true;
         mediaCodec.stop();
         mediaCodec.release();
     }

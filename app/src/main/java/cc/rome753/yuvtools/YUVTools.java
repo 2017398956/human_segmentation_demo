@@ -1,14 +1,25 @@
 package cc.rome753.yuvtools;
 
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.ImageFormat;
+import android.graphics.Rect;
+import android.graphics.YuvImage;
 import android.media.Image;
 import android.media.ImageReader;
 
 import androidx.camera.core.ImageProxy;
 
+import java.io.ByteArrayOutputStream;
 import java.nio.ByteBuffer;
 
 public class YUVTools {
+
+    /**
+     * {@link ImageFormat#YUY2},{@link ImageFormat#NV16},
+     * {@link ImageFormat#YUV_420_888},{@link ImageFormat#YUV_422_888},
+     * {@link ImageFormat#YUV_444_888} 这几个格式都是 YCbCr，只是 YUV 比例不同
+      */
 
     /******************************* YUV420旋转算法 *******************************/
 
@@ -247,16 +258,16 @@ public class YUVTools {
 
     /******************************* YUV420转换Bitmap算法 *******************************/
 
-    // 此方法虽然是官方的，但是耗时是下面方法的两倍
-//    public static Bitmap nv21ToBitmap(byte[] data, int w, int h) {
-//        final YuvImage image = new YuvImage(data, ImageFormat.NV21, w, h, null);
-//        ByteArrayOutputStream os = new ByteArrayOutputStream(data.length);
-//        if (image.compressToJpeg(new Rect(0, 0, w, h), 100, os)) {
-//            byte[] tmp = os.toByteArray();
-//            return BitmapFactory.decodeByteArray(tmp, 0, tmp.length);
-//        }
-//        return null;
-//    }
+    // 此方法虽然是官方的，但是耗时是下面方法的两倍，只支持 ImageFormat.NV21 和 ImageFormat.YUY2
+    public static Bitmap yuvToBitmap(byte[] data, int format, int w, int h) {
+        final YuvImage image = new YuvImage(data, format, w, h, null);
+        ByteArrayOutputStream os = new ByteArrayOutputStream(data.length);
+        if (image.compressToJpeg(new Rect(0, 0, w, h), 100, os)) {
+            byte[] tmp = os.toByteArray();
+            return BitmapFactory.decodeByteArray(tmp, 0, tmp.length);
+        }
+        return null;
+    }
 
     /**
      * 这个方法在 Android 中可以还原摄像头色彩
@@ -303,7 +314,11 @@ public class YUVTools {
     }
 
     public static Bitmap i420ToBitmap(byte[] data, int w, int h) {
-        return pToBitmap(data, w, h, true);
+        return i420ToBitmap(data, w, h, Bitmap.Config.RGB_565);
+    }
+
+    public static Bitmap i420ToBitmap(byte[] data, int w, int h, Bitmap.Config config) {
+        return pToBitmap(data, w, h, true, config);
     }
 
     public static Bitmap yv12ToBitmap(byte[] data, int w, int h) {
@@ -311,6 +326,10 @@ public class YUVTools {
     }
 
     private static Bitmap pToBitmap(byte[] data, int w, int h, boolean uv) {
+        return pToBitmap(data, w, h, uv, Bitmap.Config.RGB_565);
+    }
+
+    private static Bitmap pToBitmap(byte[] data, int w, int h, boolean uv, Bitmap.Config config) {
         int plane = w * h;
         int[] colors = new int[plane];
         int off = plane >> 2;
@@ -343,7 +362,7 @@ public class YUVTools {
                 vPos -= (w >> 1);
             }
         }
-        return Bitmap.createBitmap(colors, w, h, Bitmap.Config.RGB_565);
+        return Bitmap.createBitmap(colors, w, h, config);
     }
 
     public static int[] planesToColors(Image.Plane[] planes, int height) {
