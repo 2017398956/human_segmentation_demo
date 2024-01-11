@@ -3,6 +3,7 @@ package com.baidu.paddle.lite.demo.segmentation.util;
 import android.annotation.SuppressLint;
 import android.content.res.Resources;
 import android.graphics.ImageFormat;
+import android.graphics.PixelFormat;
 import android.hardware.display.DisplayManager;
 import android.hardware.display.VirtualDisplay;
 import android.media.Image;
@@ -132,7 +133,7 @@ public class ScreenCapture {
             case IMAGE_READER:
                 ImageReader imageReader;
                 imageReader = ImageReader.newInstance(width, height, ImageFormat.JPEG, 2);
-                imageReader = ImageReader.newInstance(width, height, 1, 2);
+                imageReader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 2);
                 imageReader.setOnImageAvailableListener(reader -> {
                     if (null != onImageAvailableListener) {
                         onImageAvailableListener.onImage(reader.acquireNextImage());
