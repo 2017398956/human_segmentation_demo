@@ -118,7 +118,7 @@ class GetScreenActivity : AppCompatActivity() {
                     val avcDecoder =
                         AVCDecoder.createFromScreenCaptureHelper(screenCaptureHelper, binding.sv)
                     avcDecoder.imageView = binding.ivDisplay
-                    avcFileReader?.setPlayListener(object : AVCFileReader.PlayListener {
+                    avcFileReader?.setPlayListener(object : PlayListener {
                         override fun onReady() {
 
                         }
@@ -216,7 +216,7 @@ class GetScreenActivity : AppCompatActivity() {
                     newBytes = ByteArray(bytes.size)
                     System.arraycopy(bytes, 0, newBytes, 0, bytes.size)
                 }
-                Log.i("NFL", "校验帧的大小：" + (newBytes.size - AVCFileReader.FRAME_LENGTH))
+                Log.i(TAG, "校验帧的大小：" + (newBytes.size - AVCFileReader.FRAME_LENGTH))
                 writeVideo(newBytes)
             }
         })

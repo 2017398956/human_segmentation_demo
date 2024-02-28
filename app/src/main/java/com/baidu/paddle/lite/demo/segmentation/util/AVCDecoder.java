@@ -72,25 +72,35 @@ public class AVCDecoder {
             mediaCodec = MediaCodec.createDecoderByType(mediaFormatType);
             if (mDecodeType == DECODE_ASYNC) {
                 mediaCodec.setCallback(new MediaCodec.Callback() {
+
+                    /**
+                     * 因为是解析操作，所以这里会有输入操作，和录屏时不会调用该方法的场景不一样
+                     */
                     @Override
                     public void onInputBufferAvailable(MediaCodec codec, int index) {
-                        Log.d("NFL", "onInputBufferAvailable:AVCDecoder " + index);
+                        Log.d(TAG, "onInputBufferAvailable index: " + index);
                         mInputIndexList.add(index);
                     }
 
+                    /**
+                     * 数据输入后，需要渲染到 Surface 上，所以这里也会调用
+                     */
                     @Override
                     public void onOutputBufferAvailable(MediaCodec codec, int index, MediaCodec.BufferInfo info) {
+                        Log.d(TAG, "onOutputBufferAvailable index:" + index);
+                        // render 释放输出 Buffer 时是否渲染到 mediaCodec.configure 的 Surface 上
+                        // 这里是 true 表示需要渲染
                         codec.releaseOutputBuffer(index, true);
                     }
 
                     @Override
                     public void onError(MediaCodec codec, MediaCodec.CodecException e) {
-                        Log.i(TAG, "onError");
+                        Log.i(TAG, "onError and message:" + e.getLocalizedMessage());
                     }
 
                     @Override
                     public void onOutputFormatChanged(MediaCodec codec, MediaFormat format) {
-                        Log.i(TAG, "onOutputFormatChanged");
+                        Log.i(TAG, "onOutputFormatChanged format:" + format);
                     }
                 });
                 queueInputBuffer();
@@ -106,6 +116,7 @@ public class AVCDecoder {
                 if (mFrameList.isEmpty() || mInputIndexList.isEmpty()) {
                     continue;
                 }
+                Log.d(TAG, "mFrameList.size:" + mFrameList.size() + " mInputIndexList.size:" + mInputIndexList);
                 VideoFrame frame = mFrameList.poll();
                 Integer index = mInputIndexList.poll();
                 ByteBuffer inputBuffer = mediaCodec.getInputBuffer(index);
@@ -125,7 +136,7 @@ public class AVCDecoder {
      * @param length
      */
     public void onFrame(byte[] buf, int offset, int length) {
-        // 首帧是SPS PPS，需要设置给解码器，才能工作
+        // 首帧是 SPS PPS，需要设置给解码器，才能工作
         if (CodecUtils.getFrameType(buf) == CodecUtils.NAL_SPS) {
             // 数据格式：sps+pps，所以 pps 之前的都是 sps 的数据
             // sps 和 pps 的数据都要包括 0x00 0x00 0x00 0x01

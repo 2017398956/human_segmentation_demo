@@ -40,6 +40,9 @@ import com.baidu.paddle.lite.demo.segmentation.visual.ReplaceBackgroundVisualize
 
 import java.io.IOException;
 
+/**
+ * 百度原 Activity
+ */
 public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = MainActivity.class.getSimpleName();

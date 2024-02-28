@@ -192,11 +192,12 @@ public class ScreenCapture {
             mediaCodec.setCallback(new MediaCodec.Callback() {
                 @Override
                 public void onInputBufferAvailable(@NonNull MediaCodec codec, int index) {
+                    // 因为是录屏操作，所以这里不会执行，因为只有屏幕视频流的输出
                     Image image = codec.getInputImage(index);
                     Log.d(TAG, "onInputBufferAvailable image:" + image + " and index:" + index);
                     if (null != image) {
                         ImageBytes imageBytes = YUVTools.getBytesFromImage(image);
-                        Log.i("NFL", imageBytes.width + ":" + imageBytes.height);
+                        Log.i(TAG, imageBytes.width + ":" + imageBytes.height);
                     }
                 }
 
@@ -220,9 +221,9 @@ public class ScreenCapture {
                         if (useImage) {
                             Image image = codec.getOutputImage(index);
                             if (image == null) {
-                                Log.w("NFL", "不应该出现！");
+                                Log.w(TAG, "不应该出现！");
                             } else {
-                                Log.i("NFL", "帧的格式：" + image.getFormat());
+                                Log.i(TAG, "帧的格式：" + image.getFormat());
                                 if (onImageAvailableListener != null) {
                                     onImageAvailableListener.onImage(image);
                                 }
@@ -239,10 +240,12 @@ public class ScreenCapture {
                             if (null != onCaptureVideoCallback) {
                                 onCaptureVideoCallback.onCaptureVideo(bytes, width, height);
                             } else {
-                                Log.w("NFL", "不应该出现！");
+                                Log.w(TAG, "不应该出现！");
                             }
                         }
                     }
+                    // render 释放输出 Buffer 时是否渲染到 mediaCodec.configure 的 Surface 上
+                    // 这里是 false 表示不需要渲染（因为是录屏，如果渲染会造成嵌套）
                     codec.releaseOutputBuffer(index, false);
                 }
 

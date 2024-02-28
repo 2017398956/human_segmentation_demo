@@ -30,6 +30,7 @@ public class AVCFileReader extends Thread {
         }
         this.path = videoPath ;
         this.mDecoder = decoder ;
+        // FIXME：构造函数中 playListener 一定为空，所以这个逻辑有问题
         if (null != playListener){
             playListener.onReady();
         }
