@@ -16,8 +16,12 @@ class VideoPlayerActivity : AppCompatActivity() {
 
     private val h264VideoPath = "/sdcard/Download/h264.h264"
     private val h265VideoPath = "/sdcard/Download/h265.h265"
-    private val h264VideoPath2 = "/sdcard/Download/1.h264"
-    private val h265VideoPath2 = "/sdcard/Download/1.h265"
+//    // 普通大文件
+//    private val h264VideoPath2 = "/sdcard/Download/1.h264"
+//    private val h265VideoPath2 = "/sdcard/Download/1.h265"
+    // 1G 大文件
+    private val h264VideoPath2 = "/sdcard/Download/2.h264"
+    private val h265VideoPath2 = "/sdcard/Download/2.h265"
 
     private val binding by inflate<ActivityVideoPlayerBinding>()
     private var h264AndH265DeCodePlay: H264AndH265DeCodePlay? = null
@@ -111,34 +115,45 @@ class VideoPlayerActivity : AppCompatActivity() {
                     )
                     h264AndH265DeCodePlay!!.decodePlay()
                 }
+                // 1.h26x
+//                val bigVideoFileWidth = 640
+//                val bigVideoFileHeight = 320
+//                val videoViewWidth = (bigVideoFileWidth * 1.5).toInt()
+//                val videoViewHeight = (bigVideoFileHeight * 1.5).toInt()
+
+                // 2.h26x
+                val bigVideoFileWidth = 1278
+                val bigVideoFileHeight = 720
+                val videoViewWidth = (bigVideoFileWidth * 1.0).toInt()
+                val videoViewHeight = (bigVideoFileHeight * 1.0).toInt()
                 binding.btnH2642.setOnClickListener {
                     binding.sfvVideo.layoutParams.let {
-                        it.width = (640 * 1.5).toInt()
-                        it.height = (320 * 1.5).toInt()
+                        it.width = videoViewWidth
+                        it.height = videoViewHeight
                         binding.sfvVideo.layoutParams = it
                     }
                     h264AndH265DeCodePlay = H264AndH265DeCodePlay(
                         h264VideoPath2,
                         holder.surface,
-                        MediaFormat.MIMETYPE_VIDEO_HEVC,
-                        640,
-                        320,
+                        MediaFormat.MIMETYPE_VIDEO_AVC,
+                        bigVideoFileWidth,
+                        bigVideoFileHeight,
                         30
                     )
                     h264AndH265DeCodePlay!!.decodePlay()
                 }
                 binding.btnH2652.setOnClickListener {
                     binding.sfvVideo.layoutParams.let {
-                        it.width = (640 * 1.5).toInt()
-                        it.height = (320 * 1.5).toInt()
+                        it.width = videoViewWidth
+                        it.height = videoViewHeight
                         binding.sfvVideo.layoutParams = it
                     }
                     h264AndH265DeCodePlay = H264AndH265DeCodePlay(
                         h265VideoPath2,
                         holder.surface,
                         MediaFormat.MIMETYPE_VIDEO_HEVC,
-                        640,
-                        320,
+                        bigVideoFileWidth,
+                        bigVideoFileHeight,
                         30
                     )
                     h264AndH265DeCodePlay!!.decodePlay()
