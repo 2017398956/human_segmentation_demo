@@ -21,5 +21,8 @@ class LauncherActivity : AppCompatActivity() {
         binding.btnBaiduHumanSeg.setOnClickListener {
             startActivity(Intent(this, MainActivity::class.java))
         }
+        binding.btnPlayer.setOnClickListener {
+            startActivity(Intent(this, VideoPlayerActivity::class.java))
+        }
     }
 }

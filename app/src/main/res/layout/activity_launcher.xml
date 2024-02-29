@@ -29,4 +29,12 @@
         android:textAllCaps="false"
         android:text="百度原 Activity" />
 
+    <Button
+        android:id="@+id/btn_player"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:textAllCaps="false"
+        android:text="直接播放" />
+
 </LinearLayout>

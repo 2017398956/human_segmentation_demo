@@ -40,6 +40,7 @@ public class AVCDecoder {
     public AVCDecoder(SurfaceView surfaceView, String mediaFormatType, int width, int height, MediaFormat mediaFormat) {
         mSurfaceView = surfaceView;
         this.mediaFormatType = mediaFormatType;
+        Log.d(TAG, "mediaFormatType:" + mediaFormatType + " mediaFormat.mediaFormatType:" + mediaFormat.getString(MediaFormat.KEY_MIME));
         this.mediaFormat = mediaFormat;
         this.width = width;
         this.height = height;
@@ -130,7 +131,7 @@ public class AVCDecoder {
 
     /**
      * 提供给 {@link AVCFileReader} 用于处理接收的数据
-     *
+     * FIXME:目前只能解析 h264
      * @param buf    这里传递的是真实的 h264 数据帧
      * @param offset FIXME：应该为 0 ，因为下面没处理 buf 的偏移量
      * @param length

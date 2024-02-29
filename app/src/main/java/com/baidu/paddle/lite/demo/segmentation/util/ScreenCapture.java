@@ -205,7 +205,8 @@ public class ScreenCapture {
                 public void onOutputBufferAvailable(@NonNull MediaCodec codec, int index, @NonNull MediaCodec.BufferInfo info) {
                     // 这里运行在主线程
                     // Log.i(TAG,"onOutputBufferAvailable");
-                    MediaFormat format = codec.getOutputFormat();
+                    // FIXME：这里在 红米 note4 上录制 h265 结束时，native 层有概率会 crash
+                    // MediaFormat format = codec.getOutputFormat();
                     // 这里的 image2 总是 null
                     Image image2 = codec.getOutputImage(index);
                     Log.d(TAG, "onOutputBufferAvailable image2:" + image2 + " and index:" + index);
